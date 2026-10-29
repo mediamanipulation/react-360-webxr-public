@@ -97,7 +97,6 @@ export default class ReactInstance {
   _eventLayer: HTMLElement;
   _events: Array<InputEvent>;
   _focused2DSurface: null | Surface;
-  _frameData: ?VRFrameData;
   _frameHook: ?(number) => mixed;
   _lastFrameTime: number;
   _looping: boolean;
@@ -121,6 +120,7 @@ export default class ReactInstance {
    */
   constructor(bundle: string, parent: HTMLElement, options: React360Options = {}) {
     (this: any).enterVR = this.enterVR.bind(this);
+    (this: any).exitVR = this.exitVR.bind(this);
     (this: any).frame = this.frame.bind(this);
     (this: any)._onResize = this._onResize.bind(this);
 
@@ -131,10 +131,6 @@ export default class ReactInstance {
     this._needsResize = false;
     this._parent = parent;
     this._rays = [];
-    this._frameData = null;
-    if ('VRFrameData' in window) {
-      this._frameData = new VRFrameData();
-    }
     this._looping = false;
     this._nextFrame = null;
     this._lastFrameTime = 0;
@@ -190,13 +186,17 @@ export default class ReactInstance {
     this.runtime = new Runtime(this.scene, bundleFromLocation(bundle), runtimeOptions);
 
     this.vrState = new VRState();
-    this.vrState.onDisplayChange(display => {
-      if (display) {
+    this.vrState.onDisplayChange(supported => {
+      if (this.vrState.isPresenting()) {
+        return;
+      }
+      if (supported) {
         this.overlay.setVRButtonState(true, 'View in VR', this.enterVR);
       } else {
         this.overlay.setVRButtonState(false, 'No Headset', null);
       }
     });
+    this.vrState.onEnter(this._onEnterVR.bind(this));
     this.vrState.onExit(this._onExitVR.bind(this));
     this.eventEmitter = new EventEmitter();
 
@@ -206,8 +206,8 @@ export default class ReactInstance {
     this.controls.addEventChannel(new MouseInputChannel(this._eventLayer));
     this.controls.addEventChannel(new TouchInputChannel(this._eventLayer));
     this.controls.addEventChannel(new KeyboardInputChannel());
-    this.controls.addEventChannel(new GamepadInputChannel());
-    this.controls.addRaycaster(new ControllerRaycaster(this.scene));
+    this.controls.addEventChannel(new GamepadInputChannel({}, this.vrState));
+    this.controls.addRaycaster(new ControllerRaycaster(this.scene, this.vrState));
     this.controls.addRaycaster(new MouseRaycaster(this._eventLayer));
     this.controls.addRaycaster(new TouchRaycaster(this._eventLayer));
   }
@@ -217,8 +217,7 @@ export default class ReactInstance {
   }
 
   _onResize() {
-    const display = this.vrState.getCurrentDisplay();
-    if (display && display.isPresenting) {
+    if (this.vrState.isPresenting()) {
       return;
     }
     this._needsResize = true;
@@ -241,8 +240,10 @@ export default class ReactInstance {
   /**
    * Core of the app rendering loop - gathers input, updates the React app, and
    * re-renders from the latest point of view.
+   * While a WebXR session runs, this is the session's animation frame
+   * callback and receives the XRFrame for this frame.
    */
-  frame(ms: number) {
+  frame(ms: number, xrFrame?: XRFrame) {
     const frameStart = ms || 0;
     if (this._lastFrameTime === 0) {
       this._lastFrameTime = frameStart;
@@ -258,6 +259,15 @@ export default class ReactInstance {
       this._needsResize = false;
     }
 
+    // XR input sources can only be queried through the XRFrame of the
+    // animation frame in progress
+    const session = this.vrState.getSession();
+    const presentingFrame = session && xrFrame ? xrFrame : null;
+    this.vrState.setFrame(presentingFrame);
+    const referenceSpace = this.vrState.getReferenceSpace();
+    const viewerPose =
+      presentingFrame && referenceSpace ? presentingFrame.getViewerPose(referenceSpace) : null;
+
     this._events.length = 0;
     this._rays.length = 0;
     this.controls.fillEvents(this._events);
@@ -265,8 +275,6 @@ export default class ReactInstance {
 
     // Get Camera position and orientation, so that the raycasters can be
     // properly computed
-    const display = this.vrState.getCurrentDisplay();
-    const frameData = this._frameData;
     if (this._focused2DSurface) {
       this._cameraPosition[0] = 0;
       this._cameraPosition[1] = 0;
@@ -275,22 +283,19 @@ export default class ReactInstance {
       this._cameraQuat[1] = 0;
       this._cameraQuat[2] = 0;
       this._cameraQuat[3] = 1;
-    } else if (display && display.isPresenting && frameData) {
-      display.getFrameData(frameData);
-      // Fill camera properties from frameData
-      const pose = frameData.pose;
-      if (pose.position) {
-        const position = pose.position;
-        this._cameraPosition[0] = position[0];
-        this._cameraPosition[1] = position[1];
-        this._cameraPosition[2] = position[2];
-      }
-      if (pose.orientation) {
-        const orientation = pose.orientation;
-        this._cameraQuat[0] = orientation[0];
-        this._cameraQuat[1] = orientation[1];
-        this._cameraQuat[2] = orientation[2];
-        this._cameraQuat[3] = orientation[3];
+    } else if (presentingFrame) {
+      // Fill camera properties from the viewer pose. If tracking is lost for a
+      // frame there is no pose, and the last known one is kept.
+      if (viewerPose) {
+        const position = viewerPose.transform.position;
+        this._cameraPosition[0] = position.x;
+        this._cameraPosition[1] = position.y;
+        this._cameraPosition[2] = position.z;
+        const orientation = viewerPose.transform.orientation;
+        this._cameraQuat[0] = orientation.x;
+        this._cameraQuat[1] = orientation.y;
+        this._cameraQuat[2] = orientation.z;
+        this._cameraQuat[3] = orientation.w;
       }
     } else {
       this.controls.fillCameraProperties(this._cameraPosition, this._cameraQuat);
@@ -339,51 +344,54 @@ export default class ReactInstance {
 
     this.compositor.setMouseCursorActive(this.runtime.isMouseCursorActive());
 
-    if (display && display.isPresenting && frameData) {
-      this.compositor.renderVR(display, frameData);
-      if (this._looping) {
-        // Avoid reallocating objects each frame
-        if (this._nextFrame) {
-          const nextFrame: any = this._nextFrame;
-          nextFrame.vr = true;
-          nextFrame.id = display.requestAnimationFrame(this.frame);
-        } else {
-          this._nextFrame = {
-            vr: true,
-            id: display.requestAnimationFrame(this.frame),
-          };
-        }
+    if (session && presentingFrame) {
+      if (viewerPose) {
+        this.compositor.renderXR(session, viewerPose);
       }
     } else if (this._focused2DSurface) {
       this.compositor.renderSurface(this._focused2DSurface);
-      if (this._looping) {
-        if (this._nextFrame) {
-          const nextFrame: any = this._nextFrame;
-          nextFrame.vr = false;
-          nextFrame.id = requestAnimationFrame(this.frame);
-        } else {
-          this._nextFrame = {
-            vr: false,
-            id: requestAnimationFrame(this.frame),
-          };
-        }
-      }
     } else {
       this.compositor.render(this._cameraPosition, this._cameraQuat);
-      if (this._looping) {
-        // Avoid reallocating objects each frame
-        if (this._nextFrame) {
-          const nextFrame: any = this._nextFrame;
-          nextFrame.vr = false;
-          nextFrame.id = requestAnimationFrame(this.frame);
-        } else {
-          this._nextFrame = {
-            vr: false,
-            id: requestAnimationFrame(this.frame),
-          };
-        }
-      }
     }
+    this.vrState.setFrame(null);
+    if (this._looping) {
+      this._requestFrame();
+    }
+  }
+
+  /**
+   * Schedule the next frame: on the XR session while one is running, since
+   * only its callbacks receive XRFrames, and on the window otherwise.
+   */
+  _requestFrame() {
+    const session = this.vrState.getSession();
+    // Avoid reallocating objects each frame
+    const nextFrame: any = this._nextFrame || {vr: false, id: 0};
+    if (session) {
+      nextFrame.vr = true;
+      nextFrame.id = session.requestAnimationFrame(this.frame);
+    } else {
+      nextFrame.vr = false;
+      nextFrame.id = requestAnimationFrame(this.frame);
+    }
+    this._nextFrame = nextFrame;
+  }
+
+  _cancelFrame() {
+    const nextFrame = this._nextFrame;
+    if (!nextFrame) {
+      return;
+    }
+    if (nextFrame.vr) {
+      // A session's callbacks stop on their own once it ends
+      const session = this.vrState.getSession();
+      if (session) {
+        session.cancelAnimationFrame(nextFrame.id);
+      }
+    } else {
+      cancelAnimationFrame(nextFrame.id);
+    }
+    this._nextFrame = null;
   }
 
   /**
@@ -515,22 +523,12 @@ export default class ReactInstance {
    */
   stop() {
     this._looping = false;
-    const nextFrame = this._nextFrame;
-    if (nextFrame) {
-      const display = this.vrState.getCurrentDisplay();
-      if (display && display.isPresenting) {
-        if (nextFrame.vr) {
-          display.cancelAnimationFrame(nextFrame.id);
-        }
-      } else if (!nextFrame.vr) {
-        cancelAnimationFrame(nextFrame.id);
-      }
-      this._nextFrame = null;
-    }
+    this._cancelFrame();
   }
 
   /**
-   *
+   * Start an immersive WebXR session. Must be called from a user gesture,
+   * like a click on the "View in VR" button.
    */
   enterVR() {
     this.emitEvent({
@@ -540,9 +538,10 @@ export default class ReactInstance {
         stage: 'attempt',
       },
     });
-    const display = this.vrState.getCurrentDisplay();
-    if (!display || display.isPresenting) {
-      const error = display ? 'VR Display is already presenting.' : 'No VR Display is connected.';
+    if (!this.vrState.isSupported() || this.vrState.isPresenting()) {
+      const error = this.vrState.isPresenting()
+        ? 'A VR session is already running.'
+        : 'Immersive VR is not supported by this browser or device.';
       this.emitEvent({
         type: 'entervr',
         timeStamp: Date.now(),
@@ -553,12 +552,8 @@ export default class ReactInstance {
       });
       return;
     }
-    display
-      .requestPresent([
-        {
-          source: this.compositor.getCanvas(),
-        },
-      ])
+    this.vrState
+      .requestSession(session => this.compositor.startXR(session))
       .then(() => {
         this.emitEvent({
           type: 'entervr',
@@ -567,19 +562,12 @@ export default class ReactInstance {
             stage: 'succeed',
           },
         });
-        const leftParams = display.getEyeParameters('left');
-        const rightParams = display.getEyeParameters('right');
-        this.compositor.resize(
-          leftParams.renderWidth + rightParams.renderWidth,
-          Math.min(leftParams.renderHeight, rightParams.renderHeight),
-          1
-        );
       })
       .catch(() => {
         this.emitEvent({
           type: 'entervr',
           timeStamp: Date.now(),
-          error: 'Failed request presenting in VR Display',
+          error: 'Failed to start a WebXR session',
           payload: {
             stage: 'failed',
           },
@@ -587,9 +575,39 @@ export default class ReactInstance {
       });
   }
 
+  /**
+   * End the current WebXR session, if there is one.
+   */
+  exitVR() {
+    this.vrState.endSession();
+  }
+
+  _onEnterVR() {
+    this.runtime.guiSys.setVRPresenting(true);
+    // Desktop headsets keep the page visible, so offer a way back out
+    this.overlay.setVRButtonState(true, 'Exit VR', this.exitVR);
+    if (this._looping) {
+      // Move the render loop onto the session
+      this._cancelFrame();
+      this._requestFrame();
+    }
+  }
+
   _onExitVR() {
+    this.compositor.stopXR();
+    this.runtime.guiSys.setVRPresenting(false);
+    if (this.vrState.isSupported()) {
+      this.overlay.setVRButtonState(true, 'View in VR', this.enterVR);
+    } else {
+      this.overlay.setVRButtonState(false, 'No Headset', null);
+    }
     this.emitEvent({type: 'exitvr', timeStamp: Date.now()});
     this._needsResize = true;
+    if (this._looping) {
+      // The session's pending callback died with it; resume on the window
+      this._nextFrame = null;
+      this._requestFrame();
+    }
   }
 
   resize(width: number, height: number) {

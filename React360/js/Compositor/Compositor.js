@@ -22,13 +22,16 @@ import VideoPlayer from './Video/VideoPlayer';
 import BrowserVideoPlayer from './Video/BrowserVideoPlayer';
 import VideoPlayerManager from './Video/VideoPlayerManager';
 
-const LEFT = 'left';
-const RIGHT = 'right';
-
-const leftCamera = new THREE.PerspectiveCamera();
-leftCamera.matrixAutoUpdate = false;
-const rightCamera = new THREE.PerspectiveCamera();
-rightCamera.matrixAutoUpdate = false;
+// One camera per XR view (one per eye on a headset), created as needed
+const xrCameras: Array<THREE.PerspectiveCamera> = [];
+function getXRCamera(index: number): THREE.PerspectiveCamera {
+  if (!xrCameras[index]) {
+    const camera = new THREE.PerspectiveCamera();
+    camera.matrixAutoUpdate = false;
+    xrCameras[index] = camera;
+  }
+  return xrCameras[index];
+}
 
 export default class Compositor {
   _camera: THREE.Camera;
@@ -43,6 +46,7 @@ export default class Compositor {
   _surfaceManager: SurfaceManager;
   _resourceManager: ResourceManager<Image>;
   _videoPlayers: VideoPlayerManager;
+  _xrFramebuffer: ?WebGLFramebuffer;
 
   constructor(
     frame: HTMLElement,
@@ -75,6 +79,16 @@ export default class Compositor {
     this._renderer.setSize(frame.clientWidth, frame.clientHeight);
     frame.appendChild(this._renderer.domElement);
     this._scene = scene;
+
+    // three.js r87 predates WebXR, and binds `null` whenever it means the
+    // default framebuffer. During an XR session the default framebuffer is the
+    // session's XRWebGLLayer, so those binds are redirected to it.
+    this._xrFramebuffer = null;
+    const gl = this._renderer.getContext();
+    const bindFramebuffer = gl.bindFramebuffer.bind(gl);
+    (gl: any).bindFramebuffer = (target, framebuffer) => {
+      bindFramebuffer(target, framebuffer === null ? this._xrFramebuffer : framebuffer);
+    };
 
     this._surfaceManager = new SurfaceManager(scene);
 
@@ -211,40 +225,73 @@ export default class Compositor {
     this._renderer.render(surface.getScene(), surface.getCamera());
   }
 
-  renderVR(display: VRDisplay, frameData: VRFrameData) {
+  /**
+   * Prepare to render into a new WebXR session: make the GL context compatible
+   * with the XR device and give the session a base layer to draw into.
+   */
+  startXR(session: XRSession): Promise<void> {
+    const gl = this._renderer.getContext();
+    return gl.makeXRCompatible().then(() => {
+      session.updateRenderState({
+        baseLayer: new XRWebGLLayer(session, gl, {antialias: true}),
+        depthNear: this._camera.near,
+        depthFar: this._camera.far,
+      });
+      // XR viewports are given in framebuffer pixels, and three.js scales
+      // every viewport it sets by the pixel ratio
+      this._renderer.setPixelRatio(1);
+    });
+  }
+
+  /**
+   * Return to rendering into the page's canvas once a WebXR session ends.
+   */
+  stopXR() {
+    this._xrFramebuffer = null;
+    const gl = this._renderer.getContext();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    this._renderer.setPixelRatio(window.devicePixelRatio);
+  }
+
+  /**
+   * Render each view of a WebXR viewer pose into the session's base layer.
+   */
+  renderXR(session: XRSession, pose: XRViewerPose) {
+    const baseLayer = session.renderState.baseLayer;
+    if (!baseLayer) {
+      return;
+    }
     const preserveAutoUpdate = this._scene.autoUpdate;
     if (preserveAutoUpdate) {
       this._scene.updateMatrixWorld();
       this._scene.autoUpdate = false;
     }
 
+    this._xrFramebuffer = baseLayer.framebuffer;
+    const gl = this._renderer.getContext();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
     const size = this._renderer.getSize();
     this._renderer.setScissorTest(true);
     this._camera.updateMatrixWorld();
 
-    leftCamera.matrixWorldInverse.fromArray(frameData.leftViewMatrix);
-    rightCamera.matrixWorldInverse.fromArray(frameData.rightViewMatrix);
-    leftCamera.matrixWorld.getInverse(leftCamera.matrixWorldInverse);
-    rightCamera.matrixWorld.getInverse(rightCamera.matrixWorldInverse);
-    leftCamera.projectionMatrix.fromArray(frameData.leftProjectionMatrix);
-    rightCamera.projectionMatrix.fromArray(frameData.rightProjectionMatrix);
+    const views = pose.views;
+    for (let i = 0; i < views.length; i++) {
+      const view = views[i];
+      const viewport = baseLayer.getViewport(view);
+      if (!viewport) {
+        continue;
+      }
+      const camera = getXRCamera(i);
+      camera.matrixWorld.fromArray(view.transform.matrix);
+      camera.matrixWorldInverse.fromArray(view.transform.inverse.matrix);
+      camera.projectionMatrix.fromArray(view.projectionMatrix);
 
-    let x = 0;
-    const y = 0;
-    const w = 0.5 * size.width;
-    const h = size.height;
-
-    this.prepareForRender(LEFT);
-    this._renderer.setViewport(x, y, w, h);
-    this._renderer.setScissor(x, y, w, h);
-    this._renderer.render(this._scene, leftCamera);
-
-    x = w;
-
-    this.prepareForRender(RIGHT);
-    this._renderer.setViewport(x, y, w, h);
-    this._renderer.setScissor(x, y, w, h);
-    this._renderer.render(this._scene, rightCamera);
+      this.prepareForRender(view.eye === 'none' ? null : view.eye);
+      this._renderer.setViewport(viewport.x, viewport.y, viewport.width, viewport.height);
+      this._renderer.setScissor(viewport.x, viewport.y, viewport.width, viewport.height);
+      this._renderer.render(this._scene, camera);
+    }
 
     this._renderer.setViewport(0, 0, size.width, size.height);
     this._renderer.setScissorTest(false);
@@ -252,6 +299,5 @@ export default class Compositor {
     if (preserveAutoUpdate) {
       this._scene.autoUpdate = true;
     }
-    display.submitFrame();
   }
 }

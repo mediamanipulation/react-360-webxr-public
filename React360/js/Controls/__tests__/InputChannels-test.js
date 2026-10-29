@@ -44,4 +44,30 @@ describe('GamepadInputChannel', () => {
     const mapping2 = channel.mappingLookup({id: 'generic'});
     expect(mapping2).toEqual(['confirm']);
   });
+
+  it('uses the xr-standard mapping for WebXR controllers', () => {
+    const channel = new GamepadInputChannel();
+    const mapping = channel.xrMappingLookup(
+      {profiles: ['oculus-touch-v3', 'generic-trigger-squeeze-thumbstick']},
+      {id: '', mapping: 'xr-standard'},
+    );
+    expect(mapping[0]).toBe('confirm'); // trigger
+    expect(mapping[1]).toBe(undefined); // squeeze
+    expect(mapping[4]).toBe('confirm'); // A / X
+    expect(mapping[5]).toBe('back'); // B / Y
+
+    const mapping2 = channel.xrMappingLookup({profiles: []}, {id: '', mapping: ''});
+    expect(mapping2).toEqual(['confirm']);
+  });
+
+  it('allows overrides of WebXR controllers by input profile', () => {
+    const channel = new GamepadInputChannel({
+      'generic-trigger-squeeze-thumbstick': ['confirm', 'back'],
+    });
+    const mapping = channel.xrMappingLookup(
+      {profiles: ['oculus-touch-v3', 'generic-trigger-squeeze-thumbstick']},
+      {id: '', mapping: 'xr-standard'},
+    );
+    expect(mapping).toEqual(['confirm', 'back']);
+  });
 });

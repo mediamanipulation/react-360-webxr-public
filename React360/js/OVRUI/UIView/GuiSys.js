@@ -203,12 +203,14 @@ export default class GuiSys {
     this.eventDispatcher = new THREE.EventDispatcher();
 
     this._inputEventSources = [];
+  }
 
-    // Register to events.
-    window.addEventListener(
-      'vrdisplaypresentchange',
-      this._onPresentChange.bind(this),
-    );
+  /**
+   * Called when a WebXR session starts or ends. Billboarding is skipped
+   * while presenting.
+   */
+  setVRPresenting(presenting) {
+    this.isVRPresenting = presenting;
   }
 
   /**
@@ -698,10 +700,6 @@ export default class GuiSys {
       renderTarget.style.cursor = `-webkit-${cursorStyle}`;
       renderTarget.style.cursor = `-moz-${cursorStyle}`;
     }
-  }
-
-  _onPresentChange(e) {
-    this.isVRPresenting = e.display.isPresenting;
   }
 
   _fireInputEvents(target) {

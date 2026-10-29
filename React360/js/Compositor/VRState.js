@@ -11,48 +11,70 @@
 
 type Callback = (...any) => mixed;
 
+const SESSION_MODE = 'immersive-vr';
+// 'local' places the origin at the viewer's head when the session starts,
+// matching the seated, head-centered coordinates React 360 content is laid out in.
+const REFERENCE_SPACE = 'local';
+
 /**
- * State management for VR Display
+ * State management for the WebXR immersive session.
+ *
+ * WebXR has no display object to hold on to: instead we track whether the
+ * browser can start an immersive VR session, and the session, its reference
+ * space, and the XRFrame of the animation frame in progress while one runs.
  */
 
 export default class VRState {
-  vrDisplay: ?VRDisplay;
+  supported: boolean;
   _displayChangeCallbacks: Array<Callback>;
   _enterCallbacks: Array<Callback>;
   _exitCallbacks: Array<Callback>;
+  _frame: ?XRFrame;
+  _referenceSpace: ?XRReferenceSpace;
+  _session: ?XRSession;
 
   constructor() {
+    this.supported = false;
     this._displayChangeCallbacks = [];
     this._enterCallbacks = [];
     this._exitCallbacks = [];
+    this._frame = null;
+    this._referenceSpace = null;
+    this._session = null;
 
-    (this: any).onDisplayActivate = this.onDisplayActivate.bind(this);
-    (this: any).onDisplayDeactivate = this.onDisplayDeactivate.bind(this);
-    (this: any).onDisplayConnect = this.onDisplayConnect.bind(this);
-    (this: any).onDisplayDisconnect = this.onDisplayDisconnect.bind(this);
-    (this: any).onDisplayPresentChange = this.onDisplayPresentChange.bind(this);
+    (this: any)._onSessionEnd = this._onSessionEnd.bind(this);
+    (this: any)._updateSupported = this._updateSupported.bind(this);
 
-    // Listen for headsets that connect / disconnect after the page has loaded
-    window.addEventListener('vrdisplayconnect', this.onDisplayConnect);
-    window.addEventListener('vrdisplaydisconnect', this.onDisplayDisconnect);
-    // Listen for presentation changes to catch external triggers (like the back button)
-    window.addEventListener(
-      'vrdisplaypresentchange',
-      this.onDisplayPresentChange,
-    );
-
-    if (typeof navigator.getVRDisplays === 'function') {
-      navigator.getVRDisplays().then(displays => {
-        if (displays.length) {
-          this.setCurrentDisplay(displays[0]);
-        }
-      });
+    const xr = navigator.xr;
+    if (xr) {
+      // Listen for headsets that connect / disconnect after the page has loaded
+      xr.addEventListener('devicechange', this._updateSupported);
+      this._updateSupported();
     }
+  }
+
+  _updateSupported() {
+    const xr = navigator.xr;
+    if (!xr) {
+      return;
+    }
+    xr.isSessionSupported(SESSION_MODE).then(
+      supported => this._setSupported(supported),
+      () => this._setSupported(false),
+    );
+  }
+
+  _setSupported(supported: boolean) {
+    if (this.supported === supported) {
+      return;
+    }
+    this.supported = supported;
+    this._callDisplayChangeCallbacks();
   }
 
   _callEnterCallbacks() {
     for (let i = 0; i < this._enterCallbacks.length; i++) {
-      this._enterCallbacks[i]();
+      this._enterCallbacks[i](this._session);
     }
   }
 
@@ -64,83 +86,103 @@ export default class VRState {
 
   _callDisplayChangeCallbacks() {
     for (let i = 0; i < this._displayChangeCallbacks.length; i++) {
-      this._displayChangeCallbacks[i](this.vrDisplay);
+      this._displayChangeCallbacks[i](this.supported);
     }
   }
 
+  /**
+   * Called with the XRSession once a session has started and is ready to render.
+   */
   onEnter(cb: Callback) {
     this._enterCallbacks.push(cb);
   }
 
+  /**
+   * Called after the session ends, whether through `endSession` or externally
+   * (like the headset's system menu).
+   */
   onExit(cb: Callback) {
     this._exitCallbacks.push(cb);
   }
 
+  /**
+   * Called with a boolean whenever immersive VR support changes.
+   */
   onDisplayChange(cb: Callback) {
     this._displayChangeCallbacks.push(cb);
   }
 
-  setCurrentDisplay(display: ?VRDisplay) {
-    this.vrDisplay = display;
-    this._callDisplayChangeCallbacks();
-  }
-
-  getCurrentDisplay(): ?VRDisplay {
-    return this.vrDisplay;
+  isSupported(): boolean {
+    return this.supported;
   }
 
   isPresenting(): boolean {
-    return !!this.vrDisplay && this.vrDisplay.isPresenting;
+    return !!this._session;
   }
 
-  onDisplayActivate({display}: VRDisplayEvent) {
-    if (display === this.vrDisplay) {
-      // May need to do something here for vr-to-vr navigation
-    }
+  getSession(): ?XRSession {
+    return this._session;
   }
 
-  onDisplayDeactivate({display}: VRDisplayEvent) {
-    if (display === this.vrDisplay) {
-      // May need to do something here for vr-to-vr navigation
-    }
+  getReferenceSpace(): ?XRReferenceSpace {
+    return this._referenceSpace;
   }
 
-  onDisplayConnect({display}: VRDisplayEvent) {
-    if (this.vrDisplay) {
-      return;
-    }
-    this.setCurrentDisplay(display);
+  /**
+   * The XRFrame of the animation frame currently being processed. Only set
+   * while inside a session's requestAnimationFrame callback, since an XRFrame
+   * is invalid outside of it.
+   */
+  getFrame(): ?XRFrame {
+    return this._frame;
   }
 
-  onDisplayDisconnect({display}: VRDisplayEvent) {
-    // If `display` is not the current display, return.
-    // If presenting, exit presenting, clean up.
-    // Query remaining displays.
-    // If display list is not empty, set the current display to the first one
-    // Else, clear the current display, set state to disconnected
-    if (display !== this.vrDisplay) {
-      return;
-    }
-    if (typeof navigator.getVRDisplays === 'function') {
-      navigator.getVRDisplays().then(displays => {
-        if (displays.length === 0) {
-          this.setCurrentDisplay(displays[0]);
-        } else {
-          this.setCurrentDisplay(null);
-        }
-      });
-    }
+  setFrame(frame: ?XRFrame) {
+    this._frame = frame;
   }
 
-  onDisplayPresentChange({display}: VRDisplayEvent) {
-    if (
-      this.vrDisplay &&
-      display &&
-      display.displayId === this.vrDisplay.displayId
-    ) {
-      if (!display.isPresenting) {
-        this._callExitCallbacks();
-      }
+  /**
+   * Start an immersive VR session. Must be called from a user gesture.
+   * `prepare` sets up rendering for the new session (its base layer) before
+   * the session is reported as entered.
+   */
+  requestSession(prepare: XRSession => Promise<mixed>): Promise<XRSession> {
+    const xr = navigator.xr;
+    if (!xr) {
+      return Promise.reject(new Error('WebXR is not available'));
     }
+    return xr.requestSession(SESSION_MODE).then(session =>
+      session
+        .requestReferenceSpace(REFERENCE_SPACE)
+        .then(space => prepare(session).then(() => space))
+        .then(
+          space => {
+            this._session = session;
+            this._referenceSpace = space;
+            session.addEventListener('end', this._onSessionEnd);
+            this._callEnterCallbacks();
+            return session;
+          },
+          err => {
+            session.end();
+            throw err;
+          },
+        ),
+    );
+  }
+
+  endSession(): Promise<void> {
+    const session = this._session;
+    return session ? session.end() : Promise.resolve();
+  }
+
+  _onSessionEnd() {
+    if (this._session) {
+      this._session.removeEventListener('end', this._onSessionEnd);
+    }
+    this._session = null;
+    this._referenceSpace = null;
+    this._frame = null;
+    this._callExitCallbacks();
   }
 }

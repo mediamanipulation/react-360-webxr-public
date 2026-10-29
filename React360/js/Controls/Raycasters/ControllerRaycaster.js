@@ -10,6 +10,7 @@
  */
 
 import * as THREE from 'three';
+import type VRState from '../../Compositor/VRState';
 import {rotateByQuaternion} from '../../Utils/Math';
 import {type Quaternion, type Vec3} from '../Types';
 import {type Raycaster} from './Types';
@@ -17,80 +18,72 @@ import {createControllerMesh} from '../Utils/ControllerRenderer';
 
 const TYPE = 'controller';
 
-// Fallback for browsers that don't support a getGamepads interface
-const getGamepads: () => Array<Gamepad> =
-  typeof navigator.getGamepads === 'function' ? navigator.getGamepads.bind(navigator) : () => [];
+// Avoid reallocating the ray orientation each frame
+const rayQuat: Quaternion = [0, 0, 0, 1];
 
-const armModelVector = [0, 0, -1];
-function basicArmModel(origin: Vec3, orientation: Quaternion, hand: ?string) {
-  armModelVector[0] = 0;
-  armModelVector[1] = 0;
-  armModelVector[2] = -0.4;
-  rotateByQuaternion(armModelVector, orientation);
-
-  origin[0] = armModelVector[0] + (hand === 'left' ? -0.3 : 0.3);
-  origin[1] = armModelVector[1] - 0.3;
-  origin[2] = armModelVector[2];
-}
-
+/**
+ * Casts a ray from a WebXR input source: a motion controller, a tracked hand,
+ * or the viewer's gaze on headsets without controllers.
+ * With several input sources, the ray follows whichever one most recently
+ * started a select (trigger pull, pinch, or tap).
+ */
 export default class ControllerRaycaster implements Raycaster {
+  _activeSource: ?XRInputSource;
   _enabled: boolean;
-  _gamepadID: null | string;
-  _gamepadIndex: number;
-  _scene: THREE.Scene;
   _mesh: THREE.Mesh;
+  _pose: ?XRPose;
   _rayRenderingEnabled: boolean;
+  _scene: THREE.Scene;
+  _vrState: VRState;
 
-  constructor(scene: THREE.Scene) {
+  constructor(scene: THREE.Scene, vrState: VRState) {
+    this._activeSource = null;
     this._enabled = true;
-    this._gamepadID = null;
-    this._gamepadIndex = -1;
+    this._pose = null;
     this._scene = scene;
+    this._vrState = vrState;
     this._mesh = createControllerMesh('#fff');
     this._mesh.visible = false;
     this._rayRenderingEnabled = true;
     this._scene.add(this._mesh);
 
-    const initialGamepads = getGamepads();
-    // Iterate backwards to pick up the "newest" controller first
-    /* eslint-disable-next-line */
-    for (let i = initialGamepads.length; i--; ) {
-      this._setGamepadIfValid(initialGamepads[i]);
-    }
-
-    window.addEventListener('gamepadconnected', e => {
-      this._setGamepadIfValid(e.gamepad);
+    (this: any)._onSelectStart = this._onSelectStart.bind(this);
+    vrState.onEnter(session => {
+      session.addEventListener('selectstart', this._onSelectStart);
     });
-    window.addEventListener('gamepaddisconnected', e => {
-      if (this._gamepadID && e.gamepad.id === this._gamepadID) {
-        this._setGamepad(null);
+    vrState.onExit(() => {
+      this._activeSource = null;
+    });
+  }
+
+  _onSelectStart(event: XRInputSourceEvent) {
+    if (event.inputSource.targetRayMode !== 'screen') {
+      this._activeSource = event.inputSource;
+    }
+  }
+
+  /**
+   * Keep the most recently active source while it remains connected. Until
+   * one is used, prefer a right-handed pointer, then any pointer, then gaze.
+   */
+  _getActiveSource(sources: XRInputSourceArray): ?XRInputSource {
+    let pointer = null;
+    let gaze = null;
+    for (let i = 0; i < sources.length; i++) {
+      const source = sources[i];
+      if (source === this._activeSource) {
+        return source;
       }
-    });
-  }
-
-  _setGamepadIfValid(gamepad: ?Gamepad) {
-    if (!gamepad || this._gamepadID != null) {
-      return;
+      if (source.targetRayMode === 'tracked-pointer') {
+        if (!pointer || source.handedness === 'right') {
+          pointer = source;
+        }
+      } else if (source.targetRayMode === 'gaze' && !gaze) {
+        gaze = source;
+      }
     }
-    if (gamepad.pose) {
-      this._setGamepad(gamepad);
-    }
-  }
-
-  _setGamepad(gamepad: ?Gamepad) {
-    if (!gamepad) {
-      this._gamepadID = null;
-      this._gamepadIndex = -1;
-      return;
-    }
-
-    this._gamepadID = gamepad.id;
-    this._gamepadIndex = gamepad.index;
-  }
-
-  _getGamepad() {
-    const gamepads = getGamepads();
-    return gamepads[this._gamepadIndex];
+    this._activeSource = null;
+    return pointer || gaze;
   }
 
   enable() {
@@ -109,100 +102,60 @@ export default class ControllerRaycaster implements Raycaster {
     return Infinity;
   }
 
-  _isGamepadActive(gamepad: Gamepad) {
-    const buttons = gamepad.buttons;
-    for (let btn = 0; btn < buttons.length; btn++) {
-      const pressed =
-        typeof buttons[btn] === 'object' ? buttons[btn].pressed : buttons[btn] === 1.0;
-      if (pressed) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  _tryUpdateGamepad() {
-    const gamepads = getGamepads();
-    if (this._gamepadIndex > 0 && this._isGamepadActive(gamepads[this._gamepadIndex])) {
-      return;
-    }
-    for (let id = 0; id < gamepads.length; id++) {
-      if (id !== this._gamepadIndex) {
-        const gamepad = gamepads[id];
-        if (gamepad && gamepad.pose && this._isGamepadActive(gamepad)) {
-          this._setGamepad(gamepad);
-          return;
-        }
-      }
-    }
-  }
-
   setRayRenderingEnabled(enabled: boolean) {
     this._rayRenderingEnabled = enabled;
   }
 
   fillDirection(direction: Vec3): boolean {
-    // Assume not controller provide orientation, set ray mesh invisible.
+    // Assume no input source provides a ray, set ray mesh invisible.
     this._mesh.visible = false;
+    this._pose = null;
     if (!this._enabled) {
       return false;
     }
-    // Try update the active gamepad.
-    // If current gamepad is not active and another gamepad
-    // is active, use the new active gamepad.
-    this._tryUpdateGamepad();
+    const frame = this._vrState.getFrame();
+    const referenceSpace = this._vrState.getReferenceSpace();
+    if (!frame || !referenceSpace) {
+      return false;
+    }
+    const source = this._getActiveSource(frame.session.inputSources);
+    if (!source) {
+      return false;
+    }
+    const pose = frame.getPose(source.targetRaySpace, referenceSpace);
+    if (!pose) {
+      return false;
+    }
+    this._pose = pose;
 
-    if (!this._gamepadID) {
-      return false;
-    }
-    const gamepad = this._getGamepad();
-    if (!gamepad) {
-      return false;
-    }
-    if (!gamepad.pose || !gamepad.pose.orientation) {
-      return false;
-    }
-    const orientation: Quaternion = (gamepad.pose.orientation: any);
+    const orientation = pose.transform.orientation;
+    rayQuat[0] = orientation.x;
+    rayQuat[1] = orientation.y;
+    rayQuat[2] = orientation.z;
+    rayQuat[3] = orientation.w;
     direction[0] = 0;
     direction[1] = 0;
     direction[2] = -1;
-    rotateByQuaternion(direction, orientation);
+    rotateByQuaternion(direction, rayQuat);
 
-    this._mesh.quaternion.set(orientation[0], orientation[1], orientation[2], orientation[3]);
-    if (this._rayRenderingEnabled) {
-      // if a ray is provided, set ray mesh to visible.
+    this._mesh.quaternion.set(orientation.x, orientation.y, orientation.z, orientation.w);
+    // Draw the beam for hands and controllers, not out of the viewer's eyes
+    if (this._rayRenderingEnabled && source.targetRayMode === 'tracked-pointer') {
       this._mesh.visible = true;
     }
     return true;
   }
 
   fillOrigin(origin: Vec3): boolean {
-    if (!this._enabled) {
+    // fillDirection always runs first, and found the pose for this frame
+    const pose = this._pose;
+    if (!this._enabled || !pose) {
       return false;
     }
-    if (!this._gamepadID) {
-      return false;
-    }
-    const gamepad = this._getGamepad();
-    if (!gamepad) {
-      return false;
-    }
-    if (!gamepad.pose) {
-      return false;
-    }
-    const pose = gamepad.pose;
-    if (!pose.position) {
-      if (pose.orientation) {
-        basicArmModel(origin, (pose.orientation: any), gamepad.hand);
-        this._mesh.position.set(origin[0], origin[1], origin[2]);
-        return true;
-      }
-      return false;
-    }
-    const position = pose.position;
-    origin[0] = position[0];
-    origin[1] = position[1];
-    origin[2] = position[2];
+    const position = pose.transform.position;
+    origin[0] = position.x;
+    origin[1] = position.y;
+    origin[2] = position.z;
 
     this._mesh.position.set(origin[0], origin[1], origin[2]);
     return true;

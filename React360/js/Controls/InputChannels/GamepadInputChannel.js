@@ -9,6 +9,7 @@
  * @flow
  */
 
+import type VRState from '../../Compositor/VRState';
 import type {ButtonEvent, InputEvent, InputChannel} from './Types';
 
 type GamepadEvent = {gamepad: Gamepad};
@@ -83,32 +84,55 @@ export const STANDARD_MAPPING = [
   'right',
 ];
 
+// WebXR controller buttons ('xr-standard'): trigger, squeeze, touchpad, thumbstick, A/X, B/Y
+export const XR_STANDARD_MAPPING = [
+  'confirm',
+  undefined,
+  'confirm',
+  undefined,
+  'confirm',
+  'back',
+];
+
 const DEFAULT_MAPPING = ['confirm'];
 
 export default class GamepadInputChannel implements InputChannel {
   _customMapping: {[id: string]: Mapping};
   _mappingCache: Array<?Mapping>;
   _previousState: Array<GamepadState>;
+  _vrState: ?VRState;
+  _xrPreviousState: {[source: string]: GamepadState};
+  _xrSelectEvents: Array<ButtonEvent>;
 
-  constructor(customMapping: {[id: string]: Mapping} = {}) {
+  /**
+   * `customMapping` is keyed by Gamepad id for regular gamepads, and by input
+   * profile name (like 'oculus-touch-v3') for WebXR controllers.
+   */
+  constructor(customMapping: {[id: string]: Mapping} = {}, vrState?: VRState) {
     this._mappingCache = [];
     this._previousState = [];
     this._customMapping = customMapping;
+    this._vrState = vrState || null;
+    this._xrPreviousState = {};
+    this._xrSelectEvents = [];
 
     (this: any)._onGamepadConnected = this._onGamepadConnected.bind(this);
     (this: any)._onGamepadDisconnected = this._onGamepadDisconnected.bind(this);
+    (this: any)._onXRSelect = this._onXRSelect.bind(this);
 
     window.addEventListener('gamepadconnected', this._onGamepadConnected);
     window.addEventListener('gamepaddisconnected', this._onGamepadDisconnected);
-  }
 
-  _getMapping(gamepad: Gamepad, button: number): ?string {
-    const index = gamepad.index;
-    let cacheEntry = this._mappingCache[index];
-    if (!cacheEntry) {
-      cacheEntry = this._updateCacheEntry(gamepad);
+    if (vrState) {
+      vrState.onEnter(session => {
+        session.addEventListener('selectstart', this._onXRSelect);
+        session.addEventListener('selectend', this._onXRSelect);
+      });
+      vrState.onExit(() => {
+        this._xrPreviousState = {};
+        this._xrSelectEvents.length = 0;
+      });
     }
-    return cacheEntry[button] || null;
   }
 
   mappingLookup(gamepad: Gamepad): Mapping {
@@ -122,6 +146,20 @@ export default class GamepadInputChannel implements InputChannel {
     mapping = WELL_KNOWN_MAPPINGS[gamepad.id];
     if (mapping) {
       return mapping;
+    }
+    return DEFAULT_MAPPING;
+  }
+
+  xrMappingLookup(inputSource: XRInputSource, gamepad: Gamepad): Mapping {
+    const profiles = inputSource.profiles;
+    for (let i = 0; i < profiles.length; i++) {
+      const mapping = this._customMapping[profiles[i]];
+      if (mapping) {
+        return mapping;
+      }
+    }
+    if (gamepad.mapping === 'xr-standard') {
+      return XR_STANDARD_MAPPING;
     }
     return DEFAULT_MAPPING;
   }
@@ -147,76 +185,93 @@ export default class GamepadInputChannel implements InputChannel {
     this._mappingCache[gamepad.index] = null;
   }
 
+  /**
+   * Input sources without a gamepad, like tracked hands or gaze, only report
+   * select events (a pinch or tap). Those become 'confirm' button events.
+   */
+  _onXRSelect(event: XRInputSourceEvent) {
+    const inputSource = event.inputSource;
+    if (inputSource.gamepad) {
+      // Its buttons are polled in getEvents
+      return;
+    }
+    this._xrSelectEvents.push({
+      type: 'button',
+      button: 0,
+      buttonClass: 'confirm',
+      action: event.type === 'selectstart' ? 'down' : 'up',
+      source: `xr_${inputSource.handedness}`,
+    });
+  }
+
+  _fillButtonEvents(
+    acc: Array<InputEvent>,
+    now: number,
+    source: string,
+    state: GamepadState,
+    buttons: $ReadOnlyArray<GamepadButton | number>,
+    mapping: Mapping,
+  ) {
+    for (let btn = 0; btn < buttons.length; btn++) {
+      let buttonState = state.buttons[btn];
+      if (!buttonState) {
+        buttonState = {
+          pressed: false,
+          startTime: -1,
+        };
+        state.buttons[btn] = buttonState;
+      }
+      const button = buttons[btn];
+      const pressed = typeof button === 'object' ? button.pressed : button === 1.0;
+      let action = null;
+      if (buttonState.pressed !== pressed) {
+        buttonState.pressed = pressed;
+        if (pressed) {
+          buttonState.startTime = now;
+          action = 'down';
+        } else {
+          action = 'up';
+        }
+      } else if (pressed && now - buttonState.startTime > LONG_PRESS_TIME) {
+        action = 'repeat';
+      }
+      if (action) {
+        const event: ButtonEvent = {
+          type: 'button',
+          button: btn,
+          action: action,
+          source: source,
+        };
+        const buttonClass = mapping[btn];
+        if (buttonClass) {
+          event.buttonClass = buttonClass;
+        }
+        acc.push(event);
+      }
+    }
+  }
+
   getEvents(acc: Array<InputEvent>): void {
     const now = Date.now();
     const gamepads = getGamepads();
     for (let id = 0; id < gamepads.length; id++) {
-      const source = `gamepad_${id}`;
-      if (gamepads[id]) {
+      const gamepad = gamepads[id];
+      if (gamepad) {
         if (!this._previousState[id]) {
           this._previousState[id] = {
             buttons: [],
             axes: [],
           };
         }
-        const state = this._previousState[id];
-        const buttons = gamepads[id].buttons;
-        for (let btn = 0; btn < buttons.length; btn++) {
-          let buttonState = state.buttons[btn];
-          if (!buttonState) {
-            buttonState = {
-              pressed: false,
-              startTime: -1,
-            };
-            state.buttons[btn] = buttonState;
-          }
-          const pressed =
-            typeof buttons[btn] === 'object'
-              ? buttons[btn].pressed
-              : buttons[btn] === 1.0;
-          if (buttonState.pressed !== pressed) {
-            if (pressed) {
-              buttonState.pressed = true;
-              buttonState.startTime = now;
-              const event: ButtonEvent = {
-                type: 'button',
-                button: btn,
-                action: 'down',
-                source: source,
-              };
-              const buttonClass = this._getMapping(gamepads[id], btn);
-              if (buttonClass) {
-                event.buttonClass = buttonClass;
-              }
-              acc.push(event);
-            } else {
-              buttonState.pressed = false;
-              const event: ButtonEvent = {
-                type: 'button',
-                button: btn,
-                action: 'up',
-                source: source,
-              };
-              const buttonClass = this._getMapping(gamepads[id], btn);
-              if (buttonClass) {
-                event.buttonClass = buttonClass;
-              }
-              acc.push(event);
-            }
-          } else if (pressed && now - buttonState.startTime > LONG_PRESS_TIME) {
-            const event: ButtonEvent = {
-              type: 'button',
-              button: btn,
-              action: 'repeat',
-              source: source,
-            };
-            const buttonClass = this._getMapping(gamepads[id], btn);
-            if (buttonClass) {
-              event.buttonClass = buttonClass;
-            }
-            acc.push(event);
-          }
-        }
+        const mapping = this._mappingCache[gamepad.index] || this._updateCacheEntry(gamepad);
+        this._fillButtonEvents(
+          acc,
+          now,
+          `gamepad_${id}`,
+          this._previousState[id],
+          gamepad.buttons,
+          mapping,
+        );
 
         // TODO: consider fetching axes change events
       } else {
@@ -225,5 +280,39 @@ export default class GamepadInputChannel implements InputChannel {
         }
       }
     }
+
+    // WebXR controllers are not listed by navigator.getGamepads(); their
+    // gamepads are only reachable through the session's input sources
+    const session = this._vrState ? this._vrState.getSession() : null;
+    if (session) {
+      const inputSources = session.inputSources;
+      for (let i = 0; i < inputSources.length; i++) {
+        const inputSource = inputSources[i];
+        const gamepad = inputSource.gamepad;
+        if (gamepad) {
+          const source = `xr_${inputSource.handedness}`;
+          let state = this._xrPreviousState[source];
+          if (!state) {
+            state = {
+              buttons: [],
+              axes: [],
+            };
+            this._xrPreviousState[source] = state;
+          }
+          this._fillButtonEvents(
+            acc,
+            now,
+            source,
+            state,
+            gamepad.buttons,
+            this.xrMappingLookup(inputSource, gamepad),
+          );
+        }
+      }
+    }
+    for (let i = 0; i < this._xrSelectEvents.length; i++) {
+      acc.push(this._xrSelectEvents[i]);
+    }
+    this._xrSelectEvents.length = 0;
   }
 }
