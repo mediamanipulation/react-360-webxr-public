@@ -1,0 +1,39 @@
+<html>
+  <head>
+    <title>WebXRDemo</title>
+    <style>body { margin: 0; }</style>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  </head>
+  <body>
+    <!-- Attachment point for your app -->
+    <div id="container"></div>
+    <!--
+      Open with ?emulate to try VR without a headset: IWER (Meta's Immersive
+      Web Emulation Runtime) installs an emulated Quest 3 as navigator.xr.
+      The device is exposed as window.xrDevice for scripting it.
+    -->
+    <script>
+      if (/[?&]emulate\b/.test(location.search)) {
+        document.write('<script src="./node_modules/iwer/build/iwer.min.js"><\/script>');
+      }
+    </script>
+    <script>
+      if (window.IWER) {
+        window.xrDevice = new IWER.XRDevice(IWER.metaQuest3);
+        // Desktop browsers expose a native navigator.xr even with no headset
+        window.xrDevice.installRuntime({forceInstall: true});
+      }
+    </script>
+    <script src="./client.bundle?platform=vr"></script>
+    <script>
+      // Initialize the React 360 application
+      window.r360 = React360.init(
+        'index.bundle?platform=vr&dev=true',
+        document.getElementById('container'),
+        {
+          assetRoot: 'static_assets/',
+        }
+      );
+    </script>
+  </body>
+</html>

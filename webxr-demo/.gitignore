@@ -1,0 +1,5 @@
+node_modules/
+build/
+# Created by `npm start -- --https`
+key.pem
+cert.pem

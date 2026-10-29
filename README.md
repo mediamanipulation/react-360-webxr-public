@@ -2,6 +2,10 @@
 
 React 360 is a framework for the creation of interactive 360 experiences that run in your web browser. It pairs modern APIs like WebGL and WebVR with the declarative power of React, producing applications that can be consumed through a variety of devices. Leveraging web technologies and the existing React ecosystem, React 360 aims to simplify the construction of cross-platform 360 experiences.
 
+## WebXR port
+
+React 360 was archived in 2020 while it still ran on WebVR, which browsers have since removed. This fork ports the web runtime ([`React360/`](React360/README.md), published as `react-360-web`) to the WebXR Device API, so React 360 apps can enter VR on current headsets and browsers, such as the Meta Quest browser. [`webxr-demo/`](webxr-demo/README.md) is a runnable app built against the ported runtime, including the fixes the 2018 toolchain needs to run on current Node.
+
 ## Getting Started
 
 We've designed the React 360 developer experience to get your first project up and running in only a few minutes. Before installing the developer tools, you'll need to make sure that you have two prerequisites installed:

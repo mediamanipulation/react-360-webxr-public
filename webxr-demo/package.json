@@ -1,0 +1,22 @@
+{
+  "name": "WebXRDemo",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "postinstall": "node scripts/patch-toolchain.js",
+    "start": "node node_modules/react-360/scripts/packager.js",
+    "bundle": "node node_modules/react-360/scripts/bundle.js"
+  },
+  "dependencies": {
+    "eventemitter3": "3.1.0",
+    "react": "16.3.2",
+    "react-360": "1.1.0",
+    "react-native": "0.55.4",
+    "three": "0.87.1",
+    "three-gltf2-loader": "~1.2.0"
+  },
+  "devDependencies": {
+    "babel-preset-react-native": "4.0.0",
+    "iwer": "2.7.0"
+  }
+}
