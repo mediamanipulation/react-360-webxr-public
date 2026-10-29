@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import {LOOP_STEPS, midiToHz, MOODS, stepNotes, stepSeconds} from '../pattern';
+import {resumeTime} from '../schedule';
 
 export const ORB_POSITION = [0, 0.2, -3];
 
@@ -123,6 +124,11 @@ function playStep(notes, t, stepLength) {
 
 function schedule() {
   const stepLength = stepSeconds(MOODS[mood].bpm);
+  // Entering VR or a garbage collection can stall the main thread past the
+  // lookahead; skip what was missed rather than play it all at once
+  if (nextTime < ctx.currentTime) {
+    nextTime = resumeTime(nextTime, ctx.currentTime);
+  }
   while (nextTime < ctx.currentTime + LOOKAHEAD_SECONDS) {
     playStep(stepNotes(mood, step), nextTime, stepLength);
     nextTime += stepLength;
@@ -149,7 +155,8 @@ export const engine = {
     if (timer !== null) {
       return;
     }
-    nextTime = ctx.currentTime + 0.05;
+    // Carries on from the steps queued before a pause
+    nextTime = resumeTime(nextTime, ctx.currentTime);
     timer = setInterval(schedule, TICK_MS);
   },
 

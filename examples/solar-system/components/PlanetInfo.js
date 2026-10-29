@@ -2,16 +2,9 @@ import React from 'react';
 import {StyleSheet, Text, View} from 'react-360';
 import {Button, Panel} from '../../shared/ui';
 import {COLORS} from '../../shared/palette';
-import {PANEL_SIZE} from '../constants';
+import {PANEL_SIZE, SPEEDS} from '../constants';
 import {PLANETS, SUN} from '../planets';
 import {store} from '../store';
-
-const SPEEDS = [
-  {label: 'Pause', value: 0},
-  {label: '1×', value: 1},
-  {label: '10×', value: 10},
-  {label: '100×', value: 100},
-];
 
 function formatNumber(n) {
   return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');

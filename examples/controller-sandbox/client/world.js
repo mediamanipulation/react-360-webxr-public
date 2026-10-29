@@ -5,6 +5,7 @@
  */
 
 import * as THREE from 'three';
+import {isClick} from '../input';
 import {addShape, LAUNCH_SPEED} from '../physics';
 
 const raycaster = new THREE.Raycaster();
@@ -30,8 +31,17 @@ export const world = {
     // is for the panel
     const overPanel = () => r360.runtime.isCursorActive();
 
+    // Browsers fire `click` after any press and release, so a drag to look
+    // around would launch a shape too. Only a release near the press point,
+    // which didn't start on a panel, counts.
+    let press = null;
+    canvas.addEventListener('pointerdown', event => {
+      press = overPanel() ? null : [event.clientX, event.clientY];
+    });
     canvas.addEventListener('click', event => {
-      if (r360.vrState.isPresenting() || overPanel()) {
+      const wasClick = isClick(press, [event.clientX, event.clientY]);
+      press = null;
+      if (!wasClick || r360.vrState.isPresenting() || overPanel()) {
         return;
       }
       const rect = canvas.getBoundingClientRect();

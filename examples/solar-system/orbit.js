@@ -3,9 +3,10 @@ import {clampDeltaMs} from '../shared/time';
 // At speed 1, simulated time runs 20 days per second: Earth orbits in about
 // 18 seconds.
 export const SIM_DAYS_PER_SECOND = 20;
-// Spins are slowed down by this factor on top of that, so Earth turns about
-// four times a minute instead of strobing.
-export const SPIN_SCALE = 80;
+// Spins are slowed down by this factor on top of that, so at speed 1 Earth
+// turns about once every 10 seconds, and fast spinners like Jupiter don't
+// strobe at the top speed.
+export const SPIN_SCALE = 200;
 
 export function advanceSimDays(simDays, deltaMs, speed) {
   return simDays + (clampDeltaMs(deltaMs) / 1000) * SIM_DAYS_PER_SECOND * speed;
