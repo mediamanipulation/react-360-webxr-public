@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>React 360 Examples</title>
+  <style>
+    :root {
+      --bg: #05070f;
+      --card: #0d1326;
+      --border: #26325a;
+      --accent: #6cf0ff;
+      --warm: #ffb86c;
+      --text: #ffffff;
+      --dim: #9aa4c4;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(ellipse at top, #121a3a 0%, var(--bg) 60%) fixed;
+      background-color: var(--bg);
+      color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    main {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 56px 16px 40px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(32px, 6vw, 52px);
+      letter-spacing: -0.02em;
+    }
+    h1 span { color: var(--accent); }
+    .lede {
+      margin: 0 0 40px;
+      max-width: 640px;
+      color: var(--dim);
+      font-size: 18px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: linear-gradient(160deg, rgba(108, 240, 255, 0.07), transparent 45%), var(--card);
+    }
+    .card h2 { margin: 0 0 8px; font-size: 22px; }
+    .card p { margin: 0 0 20px; color: var(--dim); flex: 1; }
+    .shows { color: var(--warm); font-size: 14px; margin-bottom: 20px; }
+    .links { display: flex; flex-wrap: wrap; gap: 10px; }
+    .links a {
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .links a.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg);
+    }
+    .links a:hover { border-color: var(--accent); }
+    .note {
+      margin-top: 40px;
+      color: var(--dim);
+      font-size: 14px;
+    }
+    .note code { color: var(--text); }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>React 360 <span>examples</span></h1>
+    <p class="lede">
+      Four demos of React 360 running on WebXR with React 16.8 hooks. Each one
+      works with a mouse on desktop, on a WebXR headset, or in a VR emulator
+      right in this browser.
+    </p>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Solar system</h2>
+        <p>The Sun and eight planets orbit around you. Point at a planet to
+          highlight it, and click to read its real facts.</p>
+        <div class="shows">three.js custom views · pointing at 3D · hooks</div>
+        <div class="links">
+          <a class="primary" href="solar-system/index.html">Open</a>
+          <a href="solar-system/index.html?emulate">Try VR in the emulator</a>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Controller sandbox</h2>
+        <p>Pull the trigger to launch glowing shapes that float, drift and
+          bounce around the room.</p>
+        <div class="shows">WebXR controllers · per-frame physics · native modules</div>
+        <div class="links">
+          <a class="primary" href="controller-sandbox/index.html">Open</a>
+          <a href="controller-sandbox/index.html?emulate">Try VR in the emulator</a>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Sound visualizer</h2>
+        <p>Music generated live in your browser plays from a glowing orb, while
+          a ring of columns pulses to it.</p>
+        <div class="shows">Web Audio · spatial sound · three.js effects</div>
+        <div class="links">
+          <a class="primary" href="sound-visualizer/index.html">Open</a>
+          <a href="sound-visualizer/index.html?emulate">Try VR in the emulator</a>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Code city</h2>
+        <p>React 360's own source code as a city around you: every building is a
+          file, and its height is the file's length.</p>
+        <div class="shows">React layout of 3D shapes · hover · useMemo</div>
+        <div class="links">
+          <a class="primary" href="code-city/index.html">Open</a>
+          <a href="code-city/index.html?emulate">Try VR in the emulator</a>
+        </div>
+      </section>
+    </div>
+
+    <p class="note">
+      VR needs a browser with WebXR, such as the Meta Quest browser, and a
+      secure page: <code>https://</code> or <code>localhost</code>. The
+      emulator links load Meta's WebXR emulator as a virtual Quest 3.
+    </p>
+  </main>
+</body>
+</html>

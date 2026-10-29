@@ -1,0 +1,31 @@
+{
+  "name": "react-360-examples",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "postinstall": "node scripts/patch-toolchain.js",
+    "start": "node node_modules/react-360/scripts/packager.js",
+    "bundle": "node scripts/bundle.js",
+    "test": "jest",
+    "generate:code-city": "node scripts/generate-code-city.js"
+  },
+  "dependencies": {
+    "eventemitter3": "3.1.0",
+    "react": "16.8.3",
+    "react-360": "1.1.0",
+    "react-native": "0.59.10",
+    "three": "0.87.1",
+    "three-gltf2-loader": "~1.2.0"
+  },
+  "devDependencies": {
+    "@babel/core": "7.29.7",
+    "babel-jest": "24.9.0",
+    "iwer": "2.7.0",
+    "jest": "24.9.0",
+    "metro-react-native-babel-preset": "0.51.1"
+  },
+  "jest": {
+    "testMatch": ["**/__tests__/**/*-test.js"],
+    "testPathIgnorePatterns": ["/node_modules/"]
+  }
+}
