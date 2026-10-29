@@ -1,0 +1,18 @@
+<html>
+  <head>
+    <title>Controller sandbox · React 360</title>
+    <style>body { margin: 0; background: #0b0820; }</style>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  </head>
+  <body>
+    <div id="container"></div>
+    <script src="../shared/emulate.js"></script>
+    <script src="./client.bundle?platform=vr"></script>
+    <script>
+      window.r360 = React360.init(
+        'index.bundle?platform=vr&dev=true',
+        document.getElementById('container'),
+      );
+    </script>
+  </body>
+</html>
