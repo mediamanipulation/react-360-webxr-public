@@ -17,7 +17,7 @@ const React = require('React');
 const ReactNativeViewAttributes = require('ReactNativeViewAttributes');
 const UIManager = require('UIManager');
 const ReactNative = require('ReactNative');
-const StyleSheetPropType = require('StyleSheetPropType');
+const StyleSheetPropType = require('DeprecatedStyleSheetPropType');
 const View = require('View');
 
 const createReactClass = require('create-react-class');
@@ -231,7 +231,7 @@ const Sound = createReactClass({
   _play() {
     UIManager.dispatchViewManagerCommand(
       ReactNative.findNodeHandle(this),
-      UIManager.Sound.Commands.play,
+      UIManager.getViewManagerConfig('Sound').Commands.play,
       []
     );
   },
@@ -239,7 +239,7 @@ const Sound = createReactClass({
   _pause() {
     UIManager.dispatchViewManagerCommand(
       ReactNative.findNodeHandle(this),
-      UIManager.Sound.Commands.pause,
+      UIManager.getViewManagerConfig('Sound').Commands.pause,
       []
     );
   },
@@ -247,7 +247,7 @@ const Sound = createReactClass({
   _seekTo(timeSec) {
     UIManager.dispatchViewManagerCommand(
       ReactNative.findNodeHandle(this),
-      UIManager.Sound.Commands.seekTo,
+      UIManager.getViewManagerConfig('Sound').Commands.seekTo,
       [timeSec]
     );
   },

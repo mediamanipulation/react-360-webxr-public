@@ -4,7 +4,7 @@ React 360 is a framework for the creation of interactive 360 experiences that ru
 
 ## WebXR port
 
-React 360 was archived in 2020 while it still ran on WebVR, which browsers have since removed. This fork ports the web runtime ([`React360/`](React360/README.md), published as `react-360-web`) to the WebXR Device API, so React 360 apps can enter VR on current headsets and browsers, such as the Meta Quest browser. [`webxr-demo/`](webxr-demo/README.md) is a runnable app built against the ported runtime, including the fixes the 2018 toolchain needs to run on current Node.
+React 360 was archived in 2020 while it still ran on WebVR, which browsers have since removed. This fork ports the web runtime ([`React360/`](React360/README.md), published as `react-360-web`) to the WebXR Device API, so React 360 apps can enter VR on current headsets and browsers, such as the Meta Quest browser. The React components in [`Libraries/`](Libraries) (published as `react-360`) are updated from React 16.3 and React Native 0.55 to React 16.8 and React Native 0.59, so they can be used from components written with hooks. [`webxr-demo/`](webxr-demo/README.md) is a runnable app built on both, including the fixes its 2019 toolchain needs to run on current Node.
 
 ## Getting Started
 

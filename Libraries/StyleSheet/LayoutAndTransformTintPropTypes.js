@@ -11,9 +11,9 @@
  */
 'use strict';
 
-const ColorPropType = require('ColorPropType');
-const LayoutPropTypes = require('LayoutPropTypes');
-const TransformPropTypes = require('TransformPropTypes');
+const ColorPropType = require('DeprecatedColorPropType');
+const LayoutPropTypes = require('DeprecatedLayoutPropTypes');
+const TransformPropTypes = require('DeprecatedTransformPropTypes');
 const PropTypes = require('prop-types');
 
 /**

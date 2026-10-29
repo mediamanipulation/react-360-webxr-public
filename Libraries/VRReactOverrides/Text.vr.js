@@ -13,26 +13,25 @@
 // FIXME All source file should be linted and typed.
 /* eslint-disable */
 
-const ColorPropType = require('ColorPropType');
-const EdgeInsetsPropType = require('EdgeInsetsPropType');
+const ColorPropType = require('DeprecatedColorPropType');
+const EdgeInsetsPropType = require('DeprecatedEdgeInsetsPropType');
 const NativeMethodsMixin = require('NativeMethodsMixin');
 const React = require('React');
 const PropTypes = require('prop-types');
 const ReactNativeViewAttributes = require('ReactNativeViewAttributes');
-const StyleSheetPropType = require('StyleSheetPropType');
+const StyleSheetPropType = require('DeprecatedStyleSheetPropType');
 const TextStylePropTypes = require('TextStylePropTypes');
 const Touchable = require('Touchable');
 const UIManager = require('UIManager');
 
 const createReactClass = require('create-react-class');
 const createReactNativeComponentClass = require('createReactNativeComponentClass');
-const mergeFast = require('mergeFast');
 const processColor = require('processColor');
 
 const stylePropType = StyleSheetPropType(TextStylePropTypes);
 
 const viewConfig = {
-  validAttributes: mergeFast(ReactNativeViewAttributes.UIView, {
+  validAttributes: Object.assign({}, ReactNativeViewAttributes.UIView, {
     isHighlighted: true,
     numberOfLines: true,
     ellipsizeMode: true,
@@ -191,7 +190,7 @@ const Text = createReactClass({
     };
   },
   getInitialState: function(): Object {
-    return mergeFast(Touchable.Mixin.touchableGetInitialState(), {
+    return Object.assign({}, Touchable.Mixin.touchableGetInitialState(), {
       isHighlighted: false,
     });
   },
@@ -374,7 +373,7 @@ var RCTVirtualText = RCTText;
 
 if (UIManager.RCTVirtualText) {
   RCTVirtualText = createReactNativeComponentClass('RCTVirtualText', () => ({
-    validAttributes: mergeFast(ReactNativeViewAttributes.UIView, {
+    validAttributes: Object.assign({}, ReactNativeViewAttributes.UIView, {
       isHighlighted: true,
     }),
     uiViewClassName: 'RCTVirtualText',

@@ -6,15 +6,15 @@
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  *
- * @providesModule ViewStylePropTypes
+ * @providesModule DeprecatedViewStylePropTypes
  * @flow
  */
 'use strict';
 
-const ColorPropType = require('ColorPropType');
+const ColorPropType = require('DeprecatedColorPropType');
 const PropTypes = require('prop-types');
 
-const OriginalViewStylePropTypes = require('react-native/Libraries/Components/View/ViewStylePropTypes');
+const OriginalViewStylePropTypes = require('react-native/Libraries/DeprecatedPropTypes/DeprecatedViewStylePropTypes');
 
 const ViewStylePropTypes = {
   ...OriginalViewStylePropTypes,

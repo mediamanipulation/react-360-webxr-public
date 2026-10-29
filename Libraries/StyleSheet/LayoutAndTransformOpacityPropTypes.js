@@ -11,9 +11,9 @@
  */
 'use strict';
 
-const LayoutPropTypes = require('LayoutPropTypes');
+const LayoutPropTypes = require('DeprecatedLayoutPropTypes');
 const PropTypes = require('prop-types');
-const TransformPropTypes = require('TransformPropTypes');
+const TransformPropTypes = require('DeprecatedTransformPropTypes');
 
 /**
  * Warning: Some of these properties may not be supported in all releases.

@@ -16,7 +16,7 @@ const React = require('React');
 const ReactNativeViewAttributes = require('ReactNativeViewAttributes');
 const View = require('View');
 const requireNativeComponent = require('requireNativeComponent');
-const StyleSheetPropType = require('StyleSheetPropType');
+const StyleSheetPropType = require('DeprecatedStyleSheetPropType');
 const UIManager = require('UIManager');
 const ReactNative = require('ReactNative');
 const LayoutAndTransformTintPropTypes = require('LayoutAndTransformTintPropTypes');
@@ -230,7 +230,7 @@ const Video = createReactClass({
   _registerUserGesture(commandID, commandArgs, reactTag) {
     UIManager.dispatchViewManagerCommand(
       reactTag,
-      UIManager.Video.Commands.setImmediateOnTouchEnd,
+      UIManager.getViewManagerConfig('Video').Commands.setImmediateOnTouchEnd,
       ['touchend', ReactNative.findNodeHandle(this), commandID, commandArgs]
     );
   },
@@ -238,7 +238,7 @@ const Video = createReactClass({
   _unregisterUserGesture(reactTag) {
     UIManager.dispatchViewManagerCommand(
       reactTag,
-      UIManager.Video.Commands.setImmediateOnTouchEnd,
+      UIManager.getViewManagerConfig('Video').Commands.setImmediateOnTouchEnd,
       []
     );
   },
@@ -246,7 +246,7 @@ const Video = createReactClass({
   _play() {
     UIManager.dispatchViewManagerCommand(
       ReactNative.findNodeHandle(this),
-      UIManager.Video.Commands.play,
+      UIManager.getViewManagerConfig('Video').Commands.play,
       []
     );
   },
@@ -254,7 +254,7 @@ const Video = createReactClass({
   _pause() {
     UIManager.dispatchViewManagerCommand(
       ReactNative.findNodeHandle(this),
-      UIManager.Video.Commands.pause,
+      UIManager.getViewManagerConfig('Video').Commands.pause,
       []
     );
   },
@@ -262,7 +262,7 @@ const Video = createReactClass({
   _seekTo(timeSec) {
     UIManager.dispatchViewManagerCommand(
       ReactNative.findNodeHandle(this),
-      UIManager.Video.Commands.seekTo,
+      UIManager.getViewManagerConfig('Video').Commands.seekTo,
       [timeSec]
     );
   },

@@ -17,8 +17,8 @@ const React = require('React');
 const ReactNative = require('ReactNative');
 const View = require('View');
 const BatchedBridge = require('BatchedBridge');
-const StyleSheetPropType = require('StyleSheetPropType');
-const ViewStylePropTypes = require('ViewStylePropTypes');
+const StyleSheetPropType = require('DeprecatedStyleSheetPropType');
+const ViewStylePropTypes = require('DeprecatedViewStylePropTypes');
 const AudioModule = require('NativeModules').AudioModule;
 
 const keyMirror = require('fbjs/lib/keyMirror');

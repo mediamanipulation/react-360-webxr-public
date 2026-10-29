@@ -11,15 +11,15 @@
  */
 'use strict';
 
-const EdgeInsetsPropType = require('EdgeInsetsPropType');
+const EdgeInsetsPropType = require('DeprecatedEdgeInsetsPropType');
 const NativeMethodsMixin = require('NativeMethodsMixin');
 const PropTypes = require('prop-types');
 const React = require('React');
 const ReactNativeStyleAttributes = require('ReactNativeStyleAttributes');
 const ReactNativeViewAttributes = require('ReactNativeViewAttributes');
-const StyleSheetPropType = require('StyleSheetPropType');
+const StyleSheetPropType = require('DeprecatedStyleSheetPropType');
 const UIManager = require('UIManager');
-const ViewStylePropTypes = require('ViewStylePropTypes');
+const ViewStylePropTypes = require('DeprecatedViewStylePropTypes');
 
 const createReactClass = require('create-react-class');
 const requireNativeComponent = require('requireNativeComponent');
@@ -53,10 +53,11 @@ const AccessibilityComponentType = [
   'radiobutton_unchecked',
 ];
 
+const RCTViewConfig = UIManager.getViewManagerConfig('RCTView');
 const forceTouchAvailable =
-  (UIManager.RCTView &&
-    UIManager.RCTView.Constants &&
-    UIManager.RCTView.Constants.forceTouchAvailable) ||
+  (RCTViewConfig &&
+    RCTViewConfig.Constants &&
+    RCTViewConfig.Constants.forceTouchAvailable) ||
   false;
 
 const statics = {

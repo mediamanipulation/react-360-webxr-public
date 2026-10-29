@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   AppRegistry,
   StyleSheet,
@@ -15,43 +15,47 @@ import BasicAppTemplateScenePage from 'BasicAppTemplateScenePage.react';
 const INFO_BUTTON_IMAGE = asset('info_icon.png');
 const SCENE_COUNT = 3;
 
-// The root react component of the app
-export default class WebXRDemo extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      index: 0,
-    };
+// Counts the seconds since `key` last changed
+function useSecondsSince(key) {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    setSeconds(0);
+    const timer = setInterval(() => setSeconds(s => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, [key]);
+  return seconds;
+}
+
+// The root react component of the app, written with React hooks
+export default function WebXRDemo() {
+  const [index, setIndex] = useState(0);
+  const seconds = useSecondsSince(index);
+
+  const sceneButtons = [];
+  for (let i = 0; i < SCENE_COUNT; i++) {
+    sceneButtons.push(
+      <BasicAppTemplateInfoButton
+        key={i}
+        style={styles.button}
+        source={INFO_BUTTON_IMAGE}
+        text={`Scene ${i}`}
+        onClick={() => setIndex(i)}
+      />)
   }
-
-  _onClick = (index) => {
-    this.setState({index: index});
-  };
-
-  render() {
-    const sceneButtons = [];
-    for (let i = 0; i < SCENE_COUNT; i++) {
-      sceneButtons.push(
-        <BasicAppTemplateInfoButton
-          key={i}
-          style={styles.button}
-          source={INFO_BUTTON_IMAGE}
-          text={`Scene ${i}`}
-          onClick={() => { this._onClick(i); }}
-        />)
-    }
-    return (
-      <View style={styles.panel}>
-        <View style={styles.section}>
-          {sceneButtons}
-        </View>
-        <View style={styles.scenePage}>
-          <BasicAppTemplateScenePage
-            index={this.state.index} />
-        </View>
+  return (
+    <View style={styles.panel}>
+      <View style={styles.section}>
+        {sceneButtons}
       </View>
-    );
-  }
+      <View style={styles.scenePage}>
+        <BasicAppTemplateScenePage
+          index={index} />
+      </View>
+      <Text style={styles.status}>
+        {`Viewing scene ${index} for ${seconds}s`}
+      </Text>
+    </View>
+  );
 };
 
 // defining StyleSheet
@@ -82,7 +86,12 @@ const styles = StyleSheet.create({
     height: 300,
     backgroundColor: 'grey',
     borderRadius: 5,
-  }
+  },
+  status: {
+    marginTop: 20,
+    fontSize: 30,
+    color: '#ffffff',
+  },
 });
 
 // register the root component

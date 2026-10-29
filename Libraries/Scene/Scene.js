@@ -14,7 +14,7 @@ const NativeMethodsMixin = require('NativeMethodsMixin');
 const React = require('React');
 const ReactNativeViewAttributes = require('ReactNativeViewAttributes');
 const View = require('View');
-const StyleSheetPropType = require('StyleSheetPropType');
+const StyleSheetPropType = require('DeprecatedStyleSheetPropType');
 const LayoutAndTransformPropTypes = require('LayoutAndTransformPropTypes');
 
 const createReactClass = require('create-react-class');

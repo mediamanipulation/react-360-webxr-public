@@ -12,14 +12,14 @@
 'use strict';
 
 const NativeMethodsMixin = require('NativeMethodsMixin');
-const ColorPropType = require('ColorPropType');
+const ColorPropType = require('DeprecatedColorPropType');
 const ImageResizeMode = require('ImageResizeMode');
-const ImageStylePropTypes = require('ImageStylePropTypes');
+const ImageStylePropTypes = require('DeprecatedImageStylePropTypes');
 const PropTypes = require('prop-types');
 const React = require('React');
 const ReactNativeViewAttributes = require('ReactNativeViewAttributes');
 const StyleSheet = require('StyleSheet');
-const StyleSheetPropType = require('StyleSheetPropType');
+const StyleSheetPropType = require('DeprecatedStyleSheetPropType');
 const View = require('View');
 
 const createReactClass = require('create-react-class');

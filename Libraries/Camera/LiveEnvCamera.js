@@ -15,7 +15,7 @@ const React = require('React');
 const ReactNativeViewAttributes = require('ReactNativeViewAttributes');
 const View = require('View');
 const requireNativeComponent = require('requireNativeComponent');
-const StyleSheetPropType = require('StyleSheetPropType');
+const StyleSheetPropType = require('DeprecatedStyleSheetPropType');
 const LayoutAndTransformPropTypes = require('LayoutAndTransformPropTypes');
 
 const createReactClass = require('create-react-class');

@@ -65,7 +65,6 @@ if (__DEV__) {
     const NativeModules = require('NativeModules');
     const {UIManager} = NativeModules;
     let currentHighlight = null;
-    const ReactNativeComponentTree = require('ReactNativeComponentTree');
       agent.on('highlight', ({node}) => {
         if (typeof node !== 'number') {
           if (typeof node._nativeTag === 'number') {

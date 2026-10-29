@@ -117,7 +117,7 @@ class BasicAppTemplateScenePage extends React.Component {
   render() {
     const data = this.state.data;
     const list = [];
-    for (const i = 0; i < data.list.length; i++) {
+    for (let i = 0; i < data.list.length; i++) {
       list.push(
         <View
           key={i}

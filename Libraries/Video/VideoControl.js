@@ -237,7 +237,7 @@ const VideoControl = createReactClass({
     if (event.nativeEvent.inputEvent.type === 'TouchInputEvent') {
       if (this.state.playStatus !== 'playing') {
         this.props.playerState.registerUserGesture(
-          UIManager.Video.Commands.play,
+          UIManager.getViewManagerConfig('Video').Commands.play,
           [],
           ReactNative.findNodeHandle(this)
         );

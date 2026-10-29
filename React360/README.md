@@ -8,6 +8,13 @@ The runtime contains code for initializing a React application in a Web Worker,
 handles asynchronous communication between the window and that application, and
 implements the primitives needed to render React 360 applications.
 
+## React Native version
+
+The runtime tells the React app it is React Native 0.59.10, matching the
+React 16.8 version of React 360's components in [`../Libraries`](../Libraries).
+React Native's JavaScript checks this at startup and logs an error if the
+versions differ.
+
 ## WebXR
 
 The runtime originally targeted WebVR, which browsers have since removed. It now

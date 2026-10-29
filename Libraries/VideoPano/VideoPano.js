@@ -16,7 +16,7 @@ const React = require('React');
 const ReactNativeViewAttributes = require('ReactNativeViewAttributes');
 const View = require('View');
 const requireNativeComponent = require('requireNativeComponent');
-const StyleSheetPropType = require('StyleSheetPropType');
+const StyleSheetPropType = require('DeprecatedStyleSheetPropType');
 const UIManager = require('UIManager');
 const ReactNative = require('ReactNative');
 const LayoutAndTransformTintPropTypes = require('LayoutAndTransformTintPropTypes');
@@ -240,7 +240,7 @@ const VideoPano = createReactClass({
   _registerUserGesture(commandID, commandArgs, reactTag) {
     UIManager.dispatchViewManagerCommand(
       reactTag,
-      UIManager.VideoPano.Commands.setImmediateOnTouchEnd,
+      UIManager.getViewManagerConfig('VideoPano').Commands.setImmediateOnTouchEnd,
       ['touchend', ReactNative.findNodeHandle(this), commandID, commandArgs]
     );
   },
@@ -248,7 +248,7 @@ const VideoPano = createReactClass({
   _unregisterUserGesture(reactTag) {
     UIManager.dispatchViewManagerCommand(
       reactTag,
-      UIManager.VideoPano.Commands.setImmediateOnTouchEnd,
+      UIManager.getViewManagerConfig('VideoPano').Commands.setImmediateOnTouchEnd,
       []
     );
   },
@@ -256,7 +256,7 @@ const VideoPano = createReactClass({
   _play() {
     UIManager.dispatchViewManagerCommand(
       ReactNative.findNodeHandle(this),
-      UIManager.VideoPano.Commands.play,
+      UIManager.getViewManagerConfig('VideoPano').Commands.play,
       []
     );
   },
@@ -264,7 +264,7 @@ const VideoPano = createReactClass({
   _pause() {
     UIManager.dispatchViewManagerCommand(
       ReactNative.findNodeHandle(this),
-      UIManager.VideoPano.Commands.pause,
+      UIManager.getViewManagerConfig('VideoPano').Commands.pause,
       []
     );
   },
@@ -272,7 +272,7 @@ const VideoPano = createReactClass({
   _seekTo(timeSec) {
     UIManager.dispatchViewManagerCommand(
       ReactNative.findNodeHandle(this),
-      UIManager.VideoPano.Commands.seekTo,
+      UIManager.getViewManagerConfig('VideoPano').Commands.seekTo,
       [timeSec]
     );
   },

@@ -1,9 +1,11 @@
 # WebXRDemo
 
-React 360's `BasicAppTemplate` sample, running on the WebXR port of the runtime in
-[`../React360`](../React360/README.md). It is set up like a `react-360 init`
-project (React 16.3, React Native 0.55, three.js r87), with the fixes that
-toolchain needs to run on current Node.
+React 360's `BasicAppTemplate` sample, running on the React 360 sources in this
+repository: the WebXR port of the runtime in [`../React360`](../React360/README.md)
+and the React components in [`../Libraries`](../Libraries). It is set up like a
+`react-360 init` project, but on React 16.8 and React Native 0.59 instead of
+React 16.3 and React Native 0.55, so components can use hooks. three.js stays at
+r87, and the toolchain gets the fixes it needs to run on current Node.
 
 ## Run it
 
@@ -13,7 +15,9 @@ npm start
 ```
 
 Then open http://localhost:8081/index.html. Hover the scene buttons and click one
-to switch the panorama.
+to switch the panorama. The line under the panel counts the seconds since you
+last switched scenes. It comes from `useState` and `useEffect` in `index.js`,
+whose root component is written with hooks.
 
 ## Try VR without a headset
 
@@ -55,19 +59,30 @@ into `build/` before deploying, because React 360's bundle script doesn't.
 
 ## How this differs from a `react-360 init` project
 
-- `rn-cli.config.js` resolves `react-360-web` (plus its `three`, `eventemitter3`
-  and `three-gltf2-loader` imports) from `../React360`, which it adds as a
-  project root. Metro 0.30 doesn't follow symlinks, so an npm `file:`
-  dependency won't work.
-- `rn-cli.config.js` also defines its own blacklist RegExp. Metro's default one
-  is invalid on Windows with current Node.
-- `scripts/patch-toolchain.js` runs on `postinstall` and patches two things in
-  `node_modules`. It skips React Native's comment-only `setup_env.bat`, because
-  Node no longer spawns `.bat` files without a shell after CVE-2024-27980. It
-  also replaces `md4` with `md5` in Metro's cache-key hash, since OpenSSL 3 no
-  longer provides `md4`.
+- `metro.config.js` loads `react-360-web` from `../React360` and `react-360`
+  from `../Libraries`, which it adds as watch folders. Metro 0.51 doesn't follow
+  symlinks, so npm `file:` dependencies won't work. The packages those folders
+  import, such as `react` and `three`, resolve from this app's `node_modules`.
+- `scripts/hasteImpl.js` names the Haste modules. React Native 0.59 names its
+  own by file name, while React 360's components still declare theirs with
+  `@providesModule`. It also names `../Libraries/react-360.js` as `react-360`,
+  which makes `import ... from 'react-360'` load those sources rather than the
+  npm package. That package is still installed for its `start` and `bundle`
+  scripts.
+- `metro.config.js` defines its own blacklist RegExp, because Metro's default
+  one is invalid on Windows with current Node.
+- `scripts/patch-toolchain.js` runs on `postinstall` and patches three things
+  in `node_modules`:
+  - It replaces `md4` with `md5` in Metro's cache-key hash, since OpenSSL 3 no
+    longer provides `md4`.
+  - It fixes the separator escaping in Metro's default blacklist, which the
+    React Native CLI builds before it reads `metro.config.js`.
+  - It changes `path.stop()` to `path.skip()` in the Babel preset's
+    `Symbol` transform. Since Babel 7.17, `path.stop()` ends the whole
+    traversal, so any file using `Symbol.iterator` would keep its Flow types.
 - `index.html` has no `bridgeFile` option. The `react-360@1.1.0` package on npm
   predates `NonBlobBridge.js`, so the React app runs in the default Blob URL
   web worker.
-- `index.js` fixes the sample's `for (const i = 0; ...; i++)` loop, which
-  doesn't compile.
+- `index.js` and `src/components/BasicAppTemplateScenePage.react.js` fix the
+  sample's `for (const i = 0; ...; i++)` loops, which throw on the first
+  increment.

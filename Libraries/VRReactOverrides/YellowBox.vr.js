@@ -20,6 +20,11 @@ const React = require('React');
  */
 
 class YellowBox extends React.Component {
+  // React Native's AppContainer installs YellowBox in development
+  static ignoreWarnings(patterns: $ReadOnlyArray<string>): void {}
+  static install(): void {}
+  static uninstall(): void {}
+
   render() {
     return null;
   }

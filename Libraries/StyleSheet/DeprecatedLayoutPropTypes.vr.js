@@ -6,7 +6,7 @@
  * LICENSE file in the root directory of this source tree. An additional grant
  * of patent rights can be found in the PATENTS file in the same directory.
  *
- * @providesModule LayoutPropTypes
+ * @providesModule DeprecatedLayoutPropTypes
  * @flow
  */
 'use strict';
@@ -15,7 +15,7 @@ const ReactPropTypes = require('prop-types');
 
 // We add a few overrides to the original React Native implementation
 // Import the original, and add the extra values before re-exporting it
-const OriginalLayoutPropTypes = require('react-native/Libraries/StyleSheet/LayoutPropTypes');
+const OriginalLayoutPropTypes = require('react-native/Libraries/DeprecatedPropTypes/DeprecatedLayoutPropTypes');
 
 const LayoutPropTypes = {
   ...OriginalLayoutPropTypes,
