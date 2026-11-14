@@ -28,6 +28,12 @@ the session starts, so content keeps the same head-centered layout it had under
 WebVR. three.js stays at r87: it predates WebXR, so the compositor drives the XR
 cameras and framebuffer itself.
 
+The session asks for two optional features, and starts without them where a
+browser doesn't have them. `hand-tracking` is what makes a Meta Quest report
+tracked hands as input sources, so pointing and pinching works with the
+controllers put down. `local-floor` is there for apps that want a floor-relative
+reference space of their own from the session; the runtime doesn't use it.
+
 If your `client.js` used the VR internals directly, these changed:
 
 - `r360.vrState` tracks the WebXR session instead of a `VRDisplay`:

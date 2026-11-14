@@ -15,6 +15,12 @@ const SESSION_MODE = 'immersive-vr';
 // 'local' places the origin at the viewer's head when the session starts,
 // matching the seated, head-centered coordinates React 360 content is laid out in.
 const REFERENCE_SPACE = 'local';
+// Asked for, but not required: a browser without them still starts the session.
+// - 'hand-tracking': on a Meta Quest, tracked hands only appear among the
+//   session's input sources if this was requested.
+// - 'local-floor': lets an app ask the session for a floor-relative reference
+//   space of its own. The runtime itself stays on REFERENCE_SPACE.
+const OPTIONAL_FEATURES = ['hand-tracking', 'local-floor'];
 
 /**
  * State management for the WebXR immersive session.
@@ -151,7 +157,7 @@ export default class VRState {
     if (!xr) {
       return Promise.reject(new Error('WebXR is not available'));
     }
-    return xr.requestSession(SESSION_MODE).then(session =>
+    return xr.requestSession(SESSION_MODE, {optionalFeatures: OPTIONAL_FEATURES}).then(session =>
       session
         .requestReferenceSpace(REFERENCE_SPACE)
         .then(space => prepare(session).then(() => space))
