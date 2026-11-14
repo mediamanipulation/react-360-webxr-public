@@ -19,6 +19,10 @@ to switch the panorama. The line under the panel counts the seconds since you
 last switched scenes. It comes from `useState` and `useEffect` in `index.js`,
 whose root component is written with hooks.
 
+The last line lists the connected controllers, from React 360's
+`ControllerInfo`. On the page that's any gamepads plugged in. In VR it's the
+headset's controllers, and it changes to your hands when you put them down.
+
 ## Try VR without a headset
 
 Open http://localhost:8081/index.html?emulate. This loads

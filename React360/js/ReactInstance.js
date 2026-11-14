@@ -186,6 +186,8 @@ export default class ReactInstance {
     this.runtime = new Runtime(this.scene, bundleFromLocation(bundle), runtimeOptions);
 
     this.vrState = new VRState();
+    // In VR, the controllers are the session's input sources
+    this.runtime.context.ControllerInfo._setVRState(this.vrState);
     this.vrState.onDisplayChange(supported => {
       if (this.vrState.isPresenting()) {
         return;

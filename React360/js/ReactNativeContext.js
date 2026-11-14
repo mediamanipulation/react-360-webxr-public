@@ -128,6 +128,7 @@ export class ReactNativeContext {
   enableHotReload: boolean;
   executor: ReactExecutor;
   GlyphTextures: GlyphTextures;
+  ControllerInfo: ControllerInfo;
   HeadModel: RCTHeadModel;
   isLowLatency: boolean;
   lastHit: UIView | null;
@@ -170,6 +171,7 @@ export class ReactNativeContext {
     this.RCTResourceManager = new RCTResourceManager();
     this.RCTInputControls = new RCTInputControls(this, guiSys);
     this.HeadModel = new RCTHeadModel(this);
+    this.ControllerInfo = new ControllerInfo(this);
     this.VideoModule = new RCTVideoModule(this);
     this.AudioModule = new RCTAudioModule(this);
     this.TextureManager = new TextureManager();
@@ -181,7 +183,7 @@ export class ReactNativeContext {
     this.registerModule(this.UIManager);
     this.registerModule(new AndroidConstants());
     this.registerModule(new AsyncLocalStorage(this));
-    this.registerModule(new ControllerInfo(this));
+    this.registerModule(this.ControllerInfo);
     this.registerModule(new DeviceInfo());
     this.registerModule(new History(this));
     this.registerModule(new Networking(this));

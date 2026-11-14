@@ -34,6 +34,24 @@ tracked hands as input sources, so pointing and pinching works with the
 controllers put down. `local-floor` is there for apps that want a floor-relative
 reference space of their own from the session; the runtime doesn't use it.
 
+`ControllerInfo` lists the session's input sources while in VR, alongside any
+gamepads plugged into the computer. A headset's controllers, tracked hands and
+gaze aren't in the Gamepad API, so `getControllers()` reads them from the
+session, and `controllerConnected` / `controllerDisconnected` fire as the
+session starts and ends and as controllers are picked up and put down. For an
+input source:
+
+- `id` is its most specific input profile, like `oculus-touch-v3` or
+  `generic-hand` (`gaze` for gaze, which has none)
+- `hand` is `'left'`, `'right'` or `null`
+- `buttons` and `axes` count those of its gamepad, and are 0 if it has none
+- `index` is unique among the connected controllers and stays the same while
+  the source is connected. It isn't the gamepad's own index, which WebXR
+  fixes at -1.
+- `source` is the `source` of the input events its buttons produce, like
+  `xr_right`, so the two can be matched up. Gamepads have it too, as
+  `gamepad_0`.
+
 If your `client.js` used the VR internals directly, these changed:
 
 - `r360.vrState` tracks the WebXR session instead of a `VRDisplay`:

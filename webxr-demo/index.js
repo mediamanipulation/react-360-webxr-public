@@ -1,6 +1,8 @@
 import React, {useEffect, useState} from 'react';
+import {DeviceEventEmitter} from 'react-native';
 import {
   AppRegistry,
+  NativeModules,
   StyleSheet,
   Text,
   View,
@@ -26,10 +28,39 @@ function useSecondsSince(key) {
   return seconds;
 }
 
+// The controllers connected right now: gamepads on the page, and in VR the
+// headset's controllers or tracked hands, which change as they're picked up
+// and put down
+function useControllers() {
+  const [controllers, setControllers] = useState([]);
+  useEffect(() => {
+    const without = (list, controller) => list.filter(other => other.index !== controller.index);
+    const connected = DeviceEventEmitter.addListener('controllerConnected', controller =>
+      setControllers(list => without(list, controller).concat(controller)),
+    );
+    const disconnected = DeviceEventEmitter.addListener('controllerDisconnected', controller =>
+      setControllers(list => without(list, controller)),
+    );
+    // Those that were connected before this component was listening
+    NativeModules.ControllerInfo.getControllers().then(already =>
+      setControllers(list => already.reduce((all, controller) => without(all, controller).concat(controller), list)),
+    );
+    return () => {
+      connected.remove();
+      disconnected.remove();
+    };
+  }, []);
+  return controllers;
+}
+
 // The root react component of the app, written with React hooks
 export default function WebXRDemo() {
   const [index, setIndex] = useState(0);
   const seconds = useSecondsSince(index);
+  const controllers = useControllers();
+  const controllerList = controllers
+    .map(controller => `${controller.hand || 'no hand'}: ${controller.id} (${controller.buttons} buttons)`)
+    .join(', ');
 
   const sceneButtons = [];
   for (let i = 0; i < SCENE_COUNT; i++) {
@@ -53,6 +84,9 @@ export default function WebXRDemo() {
       </View>
       <Text style={styles.status}>
         {`Viewing scene ${index} for ${seconds}s`}
+      </Text>
+      <Text style={styles.controllers}>
+        {`Controllers: ${controllerList || 'none'}`}
       </Text>
     </View>
   );
@@ -90,6 +124,11 @@ const styles = StyleSheet.create({
   status: {
     marginTop: 20,
     fontSize: 30,
+    color: '#ffffff',
+  },
+  controllers: {
+    marginTop: 8,
+    fontSize: 22,
     color: '#ffffff',
   },
 });
