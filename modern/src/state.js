@@ -57,6 +57,9 @@ export const background = createValue(null);
 
 export const DeviceEventEmitter = createEmitter();
 
+// How many lights the app has put in the scene itself
+export const appLights = createValue(0);
+
 const components = new Map();
 
 export const AppRegistry = {

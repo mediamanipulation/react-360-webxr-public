@@ -41,6 +41,14 @@ panorama, and drag to look around.
 `npm run build` writes a production build to `dist/`, and `npm run preview`
 serves it.
 
+## The examples
+
+http://localhost:8083/examples/code-city/index.html is the code city from
+[`../examples`](../examples/README.md), running on this runtime. Its React
+code is loaded from `../examples/code-city` unchanged: only
+[`examples/code-city/client.jsx`](examples/code-city/client.jsx), which sets
+up the scene, is new. Add `?emulate` for the virtual headset.
+
 ## Tests
 
 ```bash
@@ -50,7 +58,8 @@ npm run smoke   # the demo in a headless browser, on the page and in emulated VR
 
 The smoke test clicks a scene button with the mouse, enters VR, clicks another
 with the controller's ray and trigger, swaps the controllers for hands, and
-leaves again.
+leaves again. Then it loads the code city, counts its buildings, and filters
+them from the panel.
 
 ## Moving an app onto it
 
@@ -82,14 +91,19 @@ App code needs three small changes, which are all the demo needed:
 | `VideoModule` | Players with play, pause, seek and status events |
 | `ControllerInfo` | Controllers and hands of the VR session, and gamepads |
 | `ReactInstance` | `createRoot`, `renderToSurface`, `getDefaultSurface`, `getAssetURL`, `enterVR`, `exitVR`, `vrState`, `scene`, and the `xr` options |
-| `Surface` | Size, angle and radius |
+| `Surface` | Size, angle, radius and density |
+| `Location`, `renderToLocation` | 3D content placed in the world |
+| `Box`, `Plane`, `Sphere`, `Cylinder` | With `lit`, `wireframe`, color, opacity, style transforms and pointer events |
+| `Entity` / `Model` | glTF 2 and OBJ (with MTL) models |
+| `AmbientLight`, `PointLight`, `DirectionalLight`, `SpotLight` | Yes. Intensities are scaled to look as they did on three.js r87 |
+| `View` and `VrButton` in a location | Groups that place and catch clicks for their 3D children |
 
 ## What's not here yet
 
 - **Curved panels.** Cylinder surfaces are drawn flat.
-- **3D content from React:** `Entity`, `Model`, the primitives (`Box`,
-  `Sphere`…), lights, and `renderToLocation`. With react-three-fiber
-  underneath, these are the next thing to add.
+- **Custom views and native modules.** The other three examples draw with
+  three.js code written against the old runtime's internals. Here that code
+  becomes ordinary react-three-fiber components, which is still to do.
 - **`axis` input events** and the full `onInput` event stream. `onInput`
   reports presses only.
 - **Stereo panoramas**, spatial audio, the gaze cursor and the compass.

@@ -7,7 +7,19 @@ import {ControllerInfo} from './controllers.js';
 import {AudioModule, Environment, VideoModule} from './media.js';
 
 export {Image, Text, View, VrButton} from './components.jsx';
-export {default as ReactInstance, Surface} from './ReactInstance.jsx';
+export {default as ReactInstance, Location, Surface} from './ReactInstance.jsx';
+export {
+  AmbientLight,
+  Box,
+  Cylinder,
+  DirectionalLight,
+  Entity,
+  Model,
+  Plane,
+  PointLight,
+  Sphere,
+  SpotLight,
+} from './three-d.jsx';
 export {AppRegistry, DeviceEventEmitter, asset} from './state.js';
 export {StyleSheet} from './style.js';
 export {Animated, Environment, VideoModule};

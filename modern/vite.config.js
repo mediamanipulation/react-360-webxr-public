@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import react from '@vitejs/plugin-react';
-import {defineConfig} from 'vite';
+import {defineConfig, transformWithOxc} from 'vite';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const src = name => path.join(here, 'src', name);
@@ -62,8 +62,27 @@ function sharedAssets() {
   };
 }
 
+// The examples in ../examples are written for the original runtime, with
+// JSX in plain .js files. They are loaded from there unchanged.
+const EXAMPLES = path.join(here, '..', 'examples') + path.sep;
+
+function jsxInExamples() {
+  return {
+    name: 'jsx-in-examples',
+    enforce: 'pre',
+    async transform(code, id) {
+      const file = path.normalize(id.split('?')[0]);
+      if (!file.startsWith(EXAMPLES) || !file.endsWith('.js') || file.includes('node_modules')) {
+        return null;
+      }
+      const result = await transformWithOxc(code, file + 'x', {jsx: {runtime: 'automatic'}});
+      return {code: result.code, map: result.map};
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), sharedAssets()],
+  plugins: [jsxInExamples(), react(), sharedAssets()],
   resolve: {
     // App code keeps the imports it had on the original React 360
     alias: {
@@ -72,7 +91,18 @@ export default defineConfig({
       'react-native': src('react-native.js'),
       VideoModule: src('video-module.js'),
     },
+    // Files outside this folder, like the examples, use this folder's copies
+    dedupe: ['react', 'react-dom', 'three'],
   },
-  server: {port: 8083, strictPort: true},
+  // The examples and the shared assets live beside this folder
+  server: {port: 8083, strictPort: true, fs: {allow: ['..']}},
+  build: {
+    rollupOptions: {
+      input: {
+        demo: path.join(here, 'index.html'),
+        'code-city': path.join(here, 'examples', 'code-city', 'index.html'),
+      },
+    },
+  },
   preview: {port: 8083, strictPort: true},
 });

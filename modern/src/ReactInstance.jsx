@@ -8,13 +8,13 @@ import {XR, createXRStore} from '@react-three/xr';
 import {Container} from '@react-three/uikit';
 import * as THREE from 'three';
 import {followSession} from './controllers.js';
-import {AppRegistry, background, createEmitter, createValue, settings} from './state.js';
+import {AppRegistry, appLights, background, createEmitter, createValue, settings} from './state.js';
+import {SpaceContext} from './three-d.jsx';
 
 // React 360 measures panels in pixels on a cylinder around the viewer:
 // 4680 pixels go all the way round, 4 meters away
 const DEFAULT_RADIUS = 4;
 const PIXELS_AROUND = 4680;
-const PIXEL_SIZE = (2 * Math.PI * DEFAULT_RADIUS) / PIXELS_AROUND;
 
 /**
  * A panel in the world that a React root is drawn on.
@@ -28,6 +28,7 @@ export class Surface {
     // Cylinder surfaces are drawn flat for now
     this.shape = shape;
     this.radius = DEFAULT_RADIUS;
+    this.density = PIXELS_AROUND;
     this.yaw = 0;
     this.pitch = 0;
     this._changed = createValue(0);
@@ -49,6 +50,15 @@ export class Surface {
     this._touch();
   }
 
+  /**
+   * How many pixels would go all the way round the viewer. More makes the
+   * panel, and everything on it, smaller.
+   */
+  setDensity(density) {
+    this.density = density;
+    this._touch();
+  }
+
   resize(width, height) {
     this.width = width;
     this.height = height;
@@ -64,6 +74,37 @@ export class Surface {
   }
 }
 
+/**
+ * A place in the 3D world that a React root's 3D content is drawn at.
+ */
+export class Location {
+  constructor(position = [0, 0, 0], rotation = [0, 0, 0, 1]) {
+    this.position = position;
+    this.rotation = rotation;
+    this._changed = createValue(0);
+  }
+
+  setWorldPosition(x, y, z) {
+    this.position = [x, y, z];
+    this._changed.set(this._changed.get() + 1);
+  }
+
+  /** A quaternion: x, y, z, w. */
+  setWorldRotation(x, y, z, w) {
+    this.rotation = [x, y, z, w];
+    this._changed.set(this._changed.get() + 1);
+  }
+}
+
+function LocationGroup({location, children}) {
+  useSyncExternalStore(location._changed.subscribe, location._changed.get);
+  return (
+    <group position={location.position} quaternion={location.rotation}>
+      <SpaceContext.Provider value="location">{children}</SpaceContext.Provider>
+    </group>
+  );
+}
+
 function SurfacePanel({surface, children}) {
   useSyncExternalStore(surface._changed.subscribe, surface._changed.get);
   return (
@@ -71,7 +112,7 @@ function SurfacePanel({surface, children}) {
     <group rotation={[surface.pitch, -surface.yaw, 0, 'YXZ']}>
       <group position={[0, 0, -surface.radius]}>
         <Container
-          pixelSize={PIXEL_SIZE}
+          pixelSize={(2 * Math.PI * surface.radius) / surface.density}
           width={surface.width}
           height={surface.height}
           flexDirection="column"
@@ -106,6 +147,21 @@ function HeadCentered({store, children}) {
     }
   });
   return <group ref={group}>{children}</group>;
+}
+
+// Controller and hand models are lit, so a scene with no lights of its own
+// gets some. An app that lights its scene is left alone.
+function DefaultLights() {
+  const count = useSyncExternalStore(appLights.subscribe, appLights.get);
+  if (count > 0) {
+    return null;
+  }
+  return (
+    <>
+      <ambientLight intensity={1.5} />
+      <directionalLight intensity={2} position={[1, 3, 2]} />
+    </>
+  );
 }
 
 // A 360 photo or video all around the viewer
@@ -236,16 +292,18 @@ function App({instance}) {
           instance.scene = scene;
         }}>
         <XR store={instance.xrStore}>
-          {/* Controller and hand models are lit */}
-          <ambientLight intensity={1.5} />
-          <directionalLight intensity={2} position={[1, 3, 2]} />
+          <DefaultLights />
           <Background />
           <LookControls store={instance.xrStore} />
           <HeadCentered store={instance.xrStore}>
             <Suspense fallback={null}>
               {roots.map(root => {
                 const Component = AppRegistry.getComponent(root.name);
-                return (
+                return root.location ? (
+                  <LocationGroup key={root.tag} location={root.location}>
+                    <Component {...root.props} />
+                  </LocationGroup>
+                ) : (
                   <SurfacePanel key={root.tag} surface={root.surface}>
                     <Component {...root.props} />
                   </SurfacePanel>
@@ -293,6 +351,7 @@ export default class ReactInstance {
     this._supported = createValue(false);
     this._presenting = createValue(false);
     this._defaultSurface = new Surface(1000, 600, Surface.SurfaceShape.Cylinder);
+    this._defaultLocation = new Location();
 
     const xr = options.xr || {};
     this.xrStore = createXRStore({
@@ -349,6 +408,16 @@ export default class ReactInstance {
   renderToSurface(root, surface = this._defaultSurface) {
     this._roots.set(this._roots.get().concat({...root, surface}));
     return root.tag;
+  }
+
+  /** Draw a root's 3D content at a location in the world. */
+  renderToLocation(root, location = this._defaultLocation) {
+    this._roots.set(this._roots.get().concat({...root, location}));
+    return root.tag;
+  }
+
+  getDefaultLocation() {
+    return this._defaultLocation;
   }
 
   detachRoot(tag) {

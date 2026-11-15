@@ -6,6 +6,7 @@ import {Container, Image as UIImage, Text as UIText} from '@react-three/uikit';
 import {AudioModule} from './media.js';
 import {sourceURL} from './state.js';
 import {flattenStyle, styleToProps} from './style.js';
+import {Group, transformMatrix, useSpace} from './three-d.jsx';
 
 // React Native lays out in columns and does not shrink children, where the
 // web (and uikit) default to rows that shrink
@@ -38,6 +39,14 @@ function eventProps({onEnter, onExit, onMove, onInput}) {
 }
 
 export function View({style, children, onEnter, onExit, onMove, onInput, ...rest}) {
+  // In the 3D world a View is a group that places its children
+  if (useSpace() === 'location') {
+    return (
+      <Group style={style} onEnter={onEnter} onExit={onExit} onMove={onMove} onInput={onInput}>
+        {children}
+      </Group>
+    );
+  }
   return (
     <Container
       {...LAYOUT_DEFAULTS}
@@ -89,6 +98,7 @@ export function VrButton({
   ...rest
 }) {
   const play = source => source && AudioModule.playOneShot({source});
+  const space = useSpace();
   const handlers = disabled
     ? {}
     : {
@@ -113,6 +123,18 @@ export function VrButton({
         onPointerDown: onButtonPress,
         onPointerUp: onButtonRelease,
       };
+  // Around 3D objects, the button is whatever its children draw
+  if (space === 'location') {
+    const flat = flattenStyle(style);
+    return (
+      <group
+        matrix={transformMatrix(flat.transform)}
+        matrixAutoUpdate={false}
+        {...handlers}>
+        {children}
+      </group>
+    );
+  }
   return (
     <Container
       {...LAYOUT_DEFAULTS}

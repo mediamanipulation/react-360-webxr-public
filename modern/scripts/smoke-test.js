@@ -206,6 +206,51 @@ async function run(page, step) {
   });
 }
 
+// Runs in the page: how many boxes the scene is drawing
+const boxCount = () => {
+  let count = 0;
+  window.r360.scene.traverse(object => {
+    if (object.isMesh && object.geometry && object.geometry.type === 'BoxGeometry') {
+      count++;
+    }
+  });
+  return count;
+};
+
+// The code city example: 3D content from React, beside a panel
+async function runCodeCity(page, step) {
+  const until = (fn, arg) => page.waitForFunction(fn, arg, {timeout: TIMEOUT});
+
+  await step('the code city draws a building for every file', async () => {
+    await page.goto(`http://localhost:${PORT}/examples/code-city/index.html`);
+    await until(() => window.r360 && window.r360.scene);
+    await page.waitForFunction(boxCount, null, {timeout: TIMEOUT});
+    await sleep(500);
+    const count = await page.evaluate(boxCount);
+    assert.ok(count > 200, `expected a city of buildings, found ${count} boxes`);
+  });
+
+  await step('its panel filters the city to one folder', async () => {
+    const before = await page.evaluate(boxCount);
+    const {width, height} = page.viewportSize();
+    // The "Views" button, third in the panel's first row of filters
+    await page.mouse.click(width * 0.508, height * 0.708);
+    await page.waitForFunction(
+      ({count, total}) => {
+        let boxes = 0;
+        window.r360.scene.traverse(object => {
+          if (object.isMesh && object.geometry && object.geometry.type === 'BoxGeometry') {
+            boxes++;
+          }
+        });
+        return boxes === count && boxes < total;
+      },
+      {count: 24, total: before},
+      {timeout: TIMEOUT},
+    );
+  });
+}
+
 async function main() {
   let stopServer = () => {};
   let browser = null;
@@ -227,6 +272,7 @@ async function main() {
       console.log(`  ok    ${name}`);
     };
     await run(page, step);
+    await runCodeCity(page, step);
     assert.deepStrictEqual(errors, [], 'The page reported errors');
     console.log('The modern runtime smoke test passed');
   } catch (error) {
