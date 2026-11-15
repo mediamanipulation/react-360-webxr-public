@@ -1,31 +1,56 @@
-# React 360, on WebXR
+<h1 align="center">React 360, back in VR</h1>
 
-React 360 is a framework for building interactive 360 and VR experiences with
-React, which run in a web browser. Facebook archived it in 2020 while it still
-ran on WebVR, an API that browsers have since removed, so React 360 apps could
-no longer enter VR.
+<p align="center">
+  <b>Facebook's React 360, ported from WebVR to WebXR.</b><br>
+  Build 360 and VR experiences with React, and step into them on today's headsets.
+</p>
 
-This fork ports React 360 to the WebXR Device API. Apps written for it enter VR
-again on current browsers and headsets, such as the Meta Quest browser, with
-controllers, tracked hands or gaze.
+<p align="center">
+  <a href="#try-it-in-two-minutes">Try it</a> ·
+  <a href="#the-examples">Examples</a> ·
+  <a href="#what-changed-from-the-archive">What changed</a> ·
+  <a href="#start-your-own-app">Start your own app</a> ·
+  <a href="WEBXR_STATUS.md">Status</a>
+</p>
 
-## What's here
+<p align="center">
+  <a href="examples/solar-system"><img src="examples/screenshots/solar-system.png" alt="The solar system example: the Sun and planets on their orbits, with a panel of facts about Earth" width="820"></a>
+</p>
 
-| Folder | What it is |
-| --- | --- |
-| [`React360/`](React360/README.md) | The web runtime (`react-360-web`), ported from WebVR to WebXR. Its README lists what changed for apps. |
-| [`Libraries/`](Libraries) | The React components (`react-360`), moved from React 16.3 and React Native 0.55 to React 16.8 and React Native 0.59, so components can use hooks. |
-| [`webxr-demo/`](webxr-demo/README.md) | A runnable app on both, with the fixes its 2019 toolchain needs on current Node. It also holds the runtime's tests. Start here. |
-| [`examples/`](examples/README.md) | Four showcase demos: a solar system, a controller sandbox, a sound visualizer and a city built from React 360's own source code. |
-| [`Samples/`](Samples) | Facebook's original sample apps, as source: app templates for tours and media, and samples for native modules, multiple roots, custom video players and head-locked surfaces. They are not set up to run by themselves. `webxr-demo/` is the `BasicAppTemplate` sample made runnable on the port, and the others can be brought across the same way (see "Start your own app" below). |
-| [`docs/`](docs) | The original React 360 documentation. The API it describes is unchanged, apart from what the runtime's README lists. |
-| [`WEBXR_STATUS.md`](WEBXR_STATUS.md) | What the port covers, what has been checked and how, and what is still open. |
+## Why this exists
 
-The rest is the archived project as Facebook left it. That includes
-[`packages/`](packages/README.md), an unreleased next-generation runtime that
-still uses WebVR and is not part of this port.
+React 360 let you write VR the way you write a web page: components, props,
+state and Flexbox, drawn on panels floating in a 360 world. Facebook archived
+it in 2020. It was built on WebVR, and browsers have since removed WebVR, so
+every React 360 app lost its "View in VR" button.
 
-## Try it
+This fork puts it back. The runtime now speaks the WebXR Device API, so the
+same apps enter VR again on current browsers and headsets, with controllers,
+tracked hands or gaze. Along the way it picked up React hooks, thumbstick
+events and a test suite that runs a whole VR session without a headset.
+
+```js
+import React, {useState} from 'react';
+import {AppRegistry, Text, View, VrButton} from 'react-360';
+
+function Hello() {
+  const [count, setCount] = useState(0);
+  return (
+    <View style={{padding: 30, backgroundColor: 'rgba(10, 20, 40, 0.8)'}}>
+      <VrButton onClick={() => setCount(count + 1)}>
+        <Text style={{fontSize: 40}}>Pinched {count} times</Text>
+      </VrButton>
+    </View>
+  );
+}
+
+AppRegistry.registerComponent('Hello', () => Hello);
+```
+
+Point at it with a controller and pull the trigger, or put the controllers
+down and pinch. It is the same `onClick`.
+
+## Try it in two minutes
 
 You need Node.js and npm. The port is developed and tested on Node 22.
 
@@ -35,41 +60,115 @@ npm install
 npm start
 ```
 
-Then open http://localhost:8081/index.html.
+Open http://localhost:8081/index.html, then pick how you want to go in:
 
-- **Without a headset:** open http://localhost:8081/index.html?emulate. This
-  loads Meta's WebXR emulator as a virtual Quest 3, so the "View in VR" button
-  starts a real WebXR session in a desktop browser.
-- **On a Meta Quest:** WebXR needs a secure context. Connect the headset over
-  USB, run `adb reverse tcp:8081 tcp:8081`, and open
-  `http://localhost:8081/index.html` in the Quest browser. Or run
-  `npm start -- --https` and open `https://<your computer's IP>:8081/index.html`.
+| You have | Do this |
+| --- | --- |
+| **No headset** | Open http://localhost:8081/index.html?emulate. Meta's WebXR emulator loads as a virtual Quest 3, and "View in VR" starts a real WebXR session in your desktop browser. |
+| **A Meta Quest** | Connect it over USB, run `adb reverse tcp:8081 tcp:8081`, and open `http://localhost:8081/index.html` in the Quest browser. |
+| **Another headset on your network** | Run `npm start -- --https` and open `https://<your computer's IP>:8081/index.html`. WebXR needs a secure context. |
 
-[`webxr-demo/README.md`](webxr-demo/README.md) has the details, and
-[`examples/README.md`](examples/README.md) runs the showcase demos the same way.
+[`webxr-demo/README.md`](webxr-demo/README.md) has the details.
+
+## The examples
+
+Four demos written for this fork, each a few hundred lines of React. No
+downloaded art: the geometry, textures and music are all generated in code.
+
+<table>
+  <tr>
+    <td width="50%">
+      <a href="examples/solar-system"><img src="examples/screenshots/solar-system.png" alt="Solar system example"></a><br>
+      <b><a href="examples/solar-system">Solar system</a></b><br>
+      Point at a planet to read about it, and change the speed of time.
+    </td>
+    <td width="50%">
+      <a href="examples/code-city"><img src="examples/screenshots/code-city.png" alt="Code city example"></a><br>
+      <b><a href="examples/code-city">Code city</a></b><br>
+      React 360's own source as a city: one building per file, as tall as the file is long.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <a href="examples/controller-sandbox"><img src="examples/screenshots/controller-sandbox.png" alt="Controller sandbox example"></a><br>
+      <b><a href="examples/controller-sandbox">Controller sandbox</a></b><br>
+      Pull the trigger to launch glowing shapes that float and bounce.
+    </td>
+    <td width="50%">
+      <a href="examples/sound-visualizer"><img src="examples/screenshots/sound-visualizer.png" alt="Sound visualizer example"></a><br>
+      <b><a href="examples/sound-visualizer">Sound visualizer</a></b><br>
+      Music generated live in the browser. Turn your head and hear it move.
+    </td>
+  </tr>
+</table>
+
+```bash
+cd examples
+npm install
+npm start
+```
+
+Then open http://localhost:8081/index.html for a landing page that links to
+each one, with and without the emulator.
+[`examples/README.md`](examples/README.md) explains how they are built.
+
+## What changed from the archive
+
+Everything is built on Facebook's last commit, with their history intact.
+
+| | Facebook's archive (2020) | This fork |
+| --- | --- | --- |
+| VR API | WebVR, which browsers have removed | WebXR |
+| Enters VR today | No | Yes |
+| Controllers | Through the Gamepad API | Through the WebXR session, with a pointer beam that follows the hand you last used |
+| Tracked hands | Not supported | Point and pinch |
+| Thumbsticks and touchpads | Never reported | `axis` input events |
+| `ControllerInfo` | Gamepads only | Headset controllers and hands too, as they are picked up and put down |
+| Recentering | Not reported | A `recenter` event |
+| React | 16.3, React Native 0.55 | 16.8, React Native 0.59, so components can use hooks |
+| Runs on current Node | No | Yes |
+| Tests | Unit tests | Unit tests for the WebXR session, pointer and controllers, plus a smoke test that drives a full VR session in an emulated headset |
+| Runnable demo in the repo | None | `webxr-demo` and four examples |
+
+What did not change: the React 360 API. `View`, `Text`, `VrButton`, `Surface`,
+`Environment`, `asset()` and the rest work as the [documentation](docs)
+describes, so most existing apps need no code changes. Apps whose `client.js`
+reached into the VR internals do; the "WebXR" section of
+[`React360/README.md`](React360/README.md) lists what moved.
+
+## What's in the repository
+
+| Folder | What it is |
+| --- | --- |
+| [`React360/`](React360/README.md) | The web runtime (`react-360-web`), ported from WebVR to WebXR. |
+| [`Libraries/`](Libraries) | The React components (`react-360`), updated to React 16.8 and React Native 0.59. |
+| [`webxr-demo/`](webxr-demo/README.md) | A runnable app on both, with the fixes its 2019 toolchain needs on current Node. It also holds the runtime's tests. Start here. |
+| [`examples/`](examples/README.md) | The four demos above. |
+| [`Samples/`](Samples) | Facebook's original sample apps, as source: templates for tours and media, and samples for native modules, multiple roots, custom video players and head-locked surfaces. They are not set up to run by themselves; `webxr-demo/` is the `BasicAppTemplate` sample made runnable, and the others can be brought across the same way. |
+| [`docs/`](docs) | The original React 360 documentation. |
+| [`WEBXR_STATUS.md`](WEBXR_STATUS.md) | What the port covers, what has been checked and how, and what is still open. |
+
+The rest is the archived project as Facebook left it. That includes
+[`packages/`](packages/README.md), an unreleased next-generation runtime that
+still uses WebVR and is not part of this port.
 
 ## Start your own app
 
-The port is not on npm yet: `react-360` and `react-360-web` there are still the
-2019 WebVR releases, and `react-360 init` scaffolds against them. Until that
-changes, the way to build on the port is from a checkout of this repository:
+The port is not on npm yet. `react-360` and `react-360-web` there are still
+the 2019 WebVR releases, and `react-360 init` scaffolds against them. Until
+that changes, build from a checkout of this repository:
 
-1. Copy `webxr-demo/` to a new folder beside it and rename the app in
+1. Copy `webxr-demo/` to a new folder beside it, and rename the app in
    `package.json`, `client.js` and `index.js`.
 2. Run `npm install` and `npm start` in it.
-3. Write your app in `index.js`, as the [documentation](docs) describes.
+3. Write your app in `index.js`.
 
 The copy has to stay beside `React360/` and `Libraries/`, because its
-`metro.config.js` loads both from there. The "How this differs from a
-`react-360 init` project" section of
-[`webxr-demo/README.md`](webxr-demo/README.md) explains each piece of that
-setup.
+`metro.config.js` loads both from there.
 
 To move an existing React 360 app onto the port, start from a copy of
 `webxr-demo/` the same way and bring your `index.js`, components and
-`static_assets/` across. Most apps need no code changes. Apps whose
-`client.js` used the VR internals do: see "WebXR" in
-[`React360/README.md`](React360/README.md).
+`static_assets/` across.
 
 ## Tests
 
@@ -79,19 +178,31 @@ npm test        # the runtime's unit tests
 npm run smoke   # a whole VR session against the emulated headset
 ```
 
+The smoke test opens the demo in headless Chrome with an emulated Quest 3,
+clicks "View in VR", pulls a trigger, pushes a thumbstick, swaps the
+controllers for hands, pinches, and leaves again, checking what the runtime
+makes of each step.
+
 ## Status
 
-The port is developed against the emulator, with checks on a Meta Quest. It is a
-restoration, not a modernization: three.js stays at r87 and the bundler is
-still Metro from the React Native 0.59 era. [`WEBXR_STATUS.md`](WEBXR_STATUS.md)
-has the full picture, including what has only been checked in the emulator.
+This is a restoration, not a rewrite. three.js stays at r87 and the bundler is
+still Metro from the React Native 0.59 era, so that existing apps keep working
+unchanged. The port is developed against the emulator, with checks on a Meta
+Quest. [`WEBXR_STATUS.md`](WEBXR_STATUS.md) lists what has only been checked in
+the emulator, what is still open (publishing to npm is the big one), and what
+a real modernization would take.
 
 Issues and pull requests are welcome. If you report a bug, include the
 browser, the headset and what you saw.
 
-## License
+## Credits and license
 
-React 360 is [BSD licensed](./LICENSE). Its documentation is
-[Creative Commons licensed](./LICENSE-docs), and the examples are
-[separately licensed](./LICENSE-examples). The WebXR port is offered under the
-same terms.
+React 360 was created by Facebook and Oculus, and its authors' history is
+preserved here. It is [BSD licensed](./LICENSE). Its documentation is
+[Creative Commons licensed](./LICENSE-docs), and the samples are
+[separately licensed](./LICENSE-examples). The WebXR port and the new examples
+are offered under the same terms.
+
+"View in VR" without a headset is thanks to
+[IWER](https://github.com/meta-quest/immersive-web-emulation-runtime), Meta's
+Immersive Web Emulation Runtime.
