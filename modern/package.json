@@ -1,0 +1,28 @@
+{
+  "name": "react-360-modern",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "smoke": "node scripts/smoke-test.js"
+  },
+  "dependencies": {
+    "@react-three/fiber": "9.8.2",
+    "@react-three/uikit": "1.0.78",
+    "@react-three/xr": "6.6.32",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "6.3.0",
+    "iwer": "2.8.0",
+    "playwright-core": "1.65.1",
+    "vite": "8.3.8",
+    "vitest": "5.1.0"
+  }
+}
