@@ -86,6 +86,8 @@ export default defineConfig({
   resolve: {
     // App code keeps the imports it had on the original React 360
     alias: {
+      // What custom views written for the original runtime import
+      'react-360-web/js/OVRUI/UIView/UIView': src('legacy-uiview.js'),
       'react-360-web': src('index.js'),
       'react-360': src('index.js'),
       'react-native': src('react-native.js'),
@@ -102,6 +104,8 @@ export default defineConfig({
         demo: path.join(here, 'index.html'),
         'code-city': path.join(here, 'examples', 'code-city', 'index.html'),
         'solar-system': path.join(here, 'examples', 'solar-system', 'index.html'),
+        'controller-sandbox': path.join(here, 'examples', 'controller-sandbox', 'index.html'),
+        'sound-visualizer': path.join(here, 'examples', 'sound-visualizer', 'index.html'),
       },
     },
   },

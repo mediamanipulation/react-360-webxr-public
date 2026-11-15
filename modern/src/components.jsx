@@ -3,6 +3,7 @@
 
 import React from 'react';
 import {Container, Image as UIImage, Text as UIText} from '@react-three/uikit';
+import {useInputHandlers} from './input.js';
 import {AudioModule} from './media.js';
 import {sourceURL} from './state.js';
 import {flattenStyle, styleToProps} from './style.js';
@@ -12,33 +13,8 @@ import {Group, transformMatrix, useSpace} from './three-d.jsx';
 // web (and uikit) default to rows that shrink
 const LAYOUT_DEFAULTS = {flexDirection: 'column', flexShrink: 0};
 
-// React 360's pointer events, as uikit's
-function eventProps({onEnter, onExit, onMove, onInput}) {
-  const props = {};
-  if (onEnter) {
-    props.onPointerEnter = onEnter;
-  }
-  if (onExit) {
-    props.onPointerLeave = onExit;
-  }
-  if (onMove) {
-    props.onPointerMove = onMove;
-  }
-  if (onInput) {
-    // Button presses over the view, shaped like React 360's input events
-    const send = action => event =>
-      onInput({
-        nativeEvent: {
-          inputEvent: {type: 'button', button: 0, buttonClass: 'confirm', action, source: event.pointerType},
-        },
-      });
-    props.onPointerDown = send('down');
-    props.onPointerUp = send('up');
-  }
-  return props;
-}
-
 export function View({style, children, onEnter, onExit, onMove, onInput, ...rest}) {
+  const events = useInputHandlers({onEnter, onExit, onMove, onInput});
   // In the 3D world a View is a group that places its children
   if (useSpace() === 'location') {
     return (
@@ -51,7 +27,7 @@ export function View({style, children, onEnter, onExit, onMove, onInput, ...rest
     <Container
       {...LAYOUT_DEFAULTS}
       {...styleToProps(style)}
-      {...eventProps({onEnter, onExit, onMove, onInput})}
+      {...events}
       {...rest}>
       {children}
     </Container>

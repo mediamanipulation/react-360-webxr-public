@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
 import {MTLLoader} from 'three/examples/jsm/loaders/MTLLoader.js';
 import {OBJLoader} from 'three/examples/jsm/loaders/OBJLoader.js';
+import {useInputHandlers} from './input.js';
 import {appLights, sourceURL} from './state.js';
 import {flattenStyle} from './style.js';
 
@@ -93,39 +94,12 @@ export function transformMatrix(transform) {
   return matrix;
 }
 
-// React 360's pointer events, as react-three-fiber's
-function eventProps({onEnter, onExit, onMove, onClick, onInput}) {
-  const props = {};
-  if (onEnter) {
-    props.onPointerEnter = onEnter;
-  }
-  if (onExit) {
-    props.onPointerLeave = onExit;
-  }
-  if (onMove) {
-    props.onPointerMove = onMove;
-  }
-  if (onClick) {
-    props.onClick = onClick;
-  }
-  if (onInput) {
-    const send = action => event =>
-      onInput({
-        nativeEvent: {
-          inputEvent: {type: 'button', button: 0, buttonClass: 'confirm', action, source: event.pointerType},
-        },
-      });
-    props.onPointerDown = send('down');
-    props.onPointerUp = send('up');
-  }
-  return props;
-}
-
 /**
  * A group placed by a style's transform. In a Location, this is what View
  * and VrButton are.
  */
 export function Group({style, children, ...events}) {
+  const handlers = useInputHandlers(events);
   const flat = flattenStyle(style);
   // The transform is usually a new array each render with the same contents
   const key = JSON.stringify(flat.transform || null);
@@ -135,13 +109,14 @@ export function Group({style, children, ...events}) {
       matrix={matrix}
       matrixAutoUpdate={false}
       visible={flat.display !== 'none'}
-      {...eventProps(events)}>
+      {...handlers}>
       {children}
     </group>
   );
 }
 
 function Shape({style, lit, wireframe, texture, children, ...events}) {
+  const handlers = useInputHandlers(events);
   const flat = flattenStyle(style);
   const opacity = flat.opacity === undefined ? 1 : flat.opacity;
   const material = {
@@ -153,7 +128,7 @@ function Shape({style, lit, wireframe, texture, children, ...events}) {
   };
   return (
     <Group style={style}>
-      <mesh {...eventProps(events)}>
+      <mesh {...handlers}>
         {children}
         {lit ? <meshPhongMaterial {...material} /> : <meshBasicMaterial {...material} />}
       </mesh>

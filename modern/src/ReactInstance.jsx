@@ -7,16 +7,22 @@ import {Canvas, useFrame, useThree} from '@react-three/fiber';
 import {PointerEvents, XR, createXRStore, noEvents} from '@react-three/xr';
 import {Container} from '@react-three/uikit';
 import * as THREE from 'three';
+import Background from './Background.jsx';
 import {followSession} from './controllers.js';
 import CurvedPanel from './CurvedPanel.jsx';
+import {pollInput} from './input.js';
+import {isLegacyView, legacyViewComponent} from './legacy.jsx';
+import {updateAudioListener} from './media.js';
 import {
   AppRegistry,
   CLICK_MS,
+  DeviceEventEmitter,
   appLights,
   background,
   createEmitter,
   createValue,
   registerCustomView,
+  registerNativeModule,
   settings,
 } from './state.js';
 import {SpaceContext} from './three-d.jsx';
@@ -115,12 +121,18 @@ function LocationGroup({location, children}) {
   );
 }
 
-function SurfacePanel({surface, children}) {
+function SurfacePanel({surface, instance, children}) {
   useSyncExternalStore(surface._changed.subscribe, surface._changed.get);
+  // The instance knows whether the pointer is over a panel
+  const enter = () => instance._overPanels.add(surface);
+  const leave = () => instance._overPanels.delete(surface);
+  useEffect(() => leave, []); // eslint-disable-line react-hooks/exhaustive-deps
   if (surface.shape === Surface.SurfaceShape.Cylinder) {
     return (
       <group rotation={[surface.pitch, -surface.yaw, 0, 'YXZ']}>
-        <CurvedPanel surface={surface}>{children}</CurvedPanel>
+        <CurvedPanel surface={surface} onEnter={enter} onLeave={leave}>
+          {children}
+        </CurvedPanel>
       </group>
     );
   }
@@ -134,7 +146,9 @@ function SurfacePanel({surface, children}) {
           height={surface.height}
           flexDirection="column"
           alignItems="center"
-          justifyContent="center">
+          justifyContent="center"
+          onPointerEnter={enter}
+          onPointerLeave={leave}>
           {children}
         </Container>
       </group>
@@ -145,7 +159,7 @@ function SurfacePanel({surface, children}) {
 // React 360 content is laid out around the viewer's head. WebXR sessions here
 // put the origin on the floor, so once tracking starts everything moves to
 // where the head is.
-function HeadCentered({store, children}) {
+function HeadCentered({store, instance, children}) {
   const group = useRef(null);
   const centered = useRef(false);
   useFrame(({camera}) => {
@@ -154,6 +168,7 @@ function HeadCentered({store, children}) {
       if (centered.current) {
         centered.current = false;
         node.position.set(0, 0, 0);
+        instance._headOffset.set(0, 0, 0);
       }
       return;
     }
@@ -161,9 +176,36 @@ function HeadCentered({store, children}) {
       camera.getWorldPosition(node.position);
       // The first frames of a session have no pose yet
       centered.current = node.position.lengthSq() > 0;
+      instance._headOffset.copy(node.position);
     }
   });
   return <group ref={group}>{children}</group>;
+}
+
+const head = new THREE.Vector3();
+const facing = new THREE.Vector3();
+const upward = new THREE.Vector3();
+const turn = new THREE.Quaternion();
+
+// What the runtime does every frame, besides drawing
+function EveryFrame({instance}) {
+  useFrame(({camera, gl}) => {
+    instance._camera = camera;
+    instance._gl = gl;
+    pollInput(instance.xrStore.getState().session);
+
+    // Sounds are placed in the same head-centered space as everything else
+    camera.getWorldPosition(head).sub(instance._headOffset);
+    camera.getWorldQuaternion(turn);
+    facing.set(0, 0, -1).applyQuaternion(turn);
+    upward.set(0, 1, 0).applyQuaternion(turn);
+    updateAudioListener(head.toArray(), facing.toArray(), upward.toArray());
+
+    if (instance._frameHook) {
+      instance._frameHook(performance.now());
+    }
+  });
+  return null;
 }
 
 // Tells the instance when the scene is mounted inside the XR session root
@@ -188,51 +230,6 @@ function DefaultLights() {
       <directionalLight intensity={2} position={[1, 3, 2]} />
     </>
   );
-}
-
-// A 360 photo or video all around the viewer
-function Background() {
-  const current = useSyncExternalStore(background.subscribe, background.get);
-  const scene = useThree(state => state.scene);
-  const shown = useRef(null);
-
-  useEffect(() => {
-    // Turned so the middle of the picture is straight ahead, as React 360 has it
-    scene.backgroundRotation.set(0, Math.PI / 2, 0);
-    let cancelled = false;
-    const show = texture => {
-      if (cancelled) {
-        if (texture) {
-          texture.dispose();
-        }
-        return;
-      }
-      if (texture) {
-        texture.mapping = THREE.EquirectangularReflectionMapping;
-        texture.colorSpace = THREE.SRGBColorSpace;
-      }
-      scene.background = texture || new THREE.Color('#000000');
-      // The previous picture stays up until the new one is ready
-      if (shown.current) {
-        shown.current.dispose();
-      }
-      shown.current = texture;
-    };
-    if (!current) {
-      show(null);
-    } else if (current.type === 'video') {
-      show(new THREE.VideoTexture(current.player.element));
-    } else {
-      new THREE.TextureLoader().load(current.url, show, undefined, () => {
-        console.warn(`react-360: could not load the background ${current.url}`);
-      });
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [current, scene]);
-
-  return null;
 }
 
 // On the page, drag to look around
@@ -318,17 +315,20 @@ function App({instance}) {
         events={noEvents}
         camera={{position: [0, 0, 0], fov: 60, near: 0.1, far: 1000}}
         style={{touchAction: 'none'}}
-        onCreated={({scene}) => {
+        onCreated={({scene, camera, gl}) => {
           // The three.js scene, for apps that add objects of their own
           instance.scene = scene;
+          instance._camera = camera;
+          instance._gl = gl;
         }}>
         <PointerEvents clickThresholdMs={CLICK_MS} />
         <XR store={instance.xrStore}>
           <Ready instance={instance} />
+          <EveryFrame instance={instance} />
           <DefaultLights />
           <Background />
           <LookControls store={instance.xrStore} />
-          <HeadCentered store={instance.xrStore}>
+          <HeadCentered store={instance.xrStore} instance={instance}>
             <Suspense fallback={null}>
               {roots.map(root => {
                 const Component = AppRegistry.getComponent(root.name);
@@ -337,7 +337,7 @@ function App({instance}) {
                     <Component {...root.props} />
                   </LocationGroup>
                 ) : (
-                  <SurfacePanel key={root.tag} surface={root.surface}>
+                  <SurfacePanel key={root.tag} surface={root.surface} instance={instance}>
                     <Component {...root.props} />
                   </SurfacePanel>
                 );
@@ -379,7 +379,29 @@ export default class ReactInstance {
       });
     }
 
-    (options.customViews || []).forEach(({name, view}) => registerCustomView(name, view));
+    // A custom view is a React component, or a class written for the
+    // original runtime
+    (options.customViews || []).forEach(({name, view}) =>
+      registerCustomView(name, isLegacyView(view) ? legacyViewComponent(view) : view),
+    );
+    // A native module is an object with a name, or a function that makes one.
+    // The function is given what the original runtime's modules used to send
+    // events to the app.
+    const context = {
+      callFunction: (module, method, args) => {
+        if (module === 'RCTDeviceEventEmitter' && method === 'emit') {
+          DeviceEventEmitter.emit(...args);
+        }
+      },
+    };
+    (options.nativeModules || []).forEach(module =>
+      registerNativeModule(typeof module === 'function' ? module(context) : module),
+    );
+    this._frameHook = options.frame || null;
+    this._overPanels = new Set();
+    this._headOffset = new THREE.Vector3();
+    this._camera = null;
+    this._gl = null;
 
     this.eventEmitter = createEmitter();
     this._roots = createValue([]);
@@ -413,10 +435,44 @@ export default class ReactInstance {
       });
     });
 
+    const enterCallbacks = [];
+    const exitCallbacks = [];
+    this.xrStore.subscribe((state, previous) => {
+      if (state.session && !previous.session) {
+        enterCallbacks.forEach(callback => callback(state.session));
+      } else if (!state.session && previous.session) {
+        exitCallbacks.forEach(callback => callback());
+      }
+    });
+    let offsetSpace = null;
     this.vrState = {
       isSupported: () => this._supported.get(),
       isPresenting: () => this._presenting.get(),
       getSession: () => this.xrStore.getState().session || null,
+      onEnter: callback => enterCallbacks.push(callback),
+      onExit: callback => exitCallbacks.push(callback),
+      /** The XRFrame of the frame being drawn, while in VR. */
+      getFrame: () => (this._gl && this._gl.xr.isPresenting ? this._gl.xr.getFrame() : null),
+      /**
+       * A reference space whose origin is where the viewer's head was when
+       * the session started: the space content is laid out in.
+       */
+      getReferenceSpace: () => {
+        const base = this._gl && this._gl.xr.isPresenting ? this._gl.xr.getReferenceSpace() : null;
+        if (!base) {
+          return null;
+        }
+        const {x, y, z} = this._headOffset;
+        const key = `${x},${y},${z}`;
+        if (!offsetSpace || offsetSpace.base !== base || offsetSpace.key !== key) {
+          offsetSpace = {
+            base,
+            key,
+            space: base.getOffsetReferenceSpace(new XRRigidTransform({x, y, z})),
+          };
+        }
+        return offsetSpace.space;
+      },
     };
     const updateSupported = () => {
       navigator.xr.isSessionSupported('immersive-vr').then(
@@ -431,11 +487,34 @@ export default class ReactInstance {
 
     // The original runtime's compositor, as far as client.js files use it
     this.compositor = {
-      setBackground: url => background.set(url ? {type: 'image', url, format: '2D'} : null),
+      setBackground: (url, options = {}) =>
+        background.set(url ? {type: 'image', url, format: options.format || '2D'} : null),
+      getCanvas: () => (this._gl ? this._gl.domElement : null),
+      getCamera: () => this._camera,
+    };
+    this.runtime = {
+      /** Whether the pointer is over a panel. */
+      isCursorActive: () => this._overPanels.size > 0,
     };
 
     this._reactRoot = createRoot(parent);
     this._reactRoot.render(<App instance={this} />);
+  }
+
+  /** Resolves once the canvas and scene exist. */
+  whenReady() {
+    return new Promise(resolve => {
+      if (this._ready.get()) {
+        resolve();
+        return;
+      }
+      const unsubscribe = this._ready.subscribe(() => {
+        if (this._ready.get()) {
+          unsubscribe();
+          resolve();
+        }
+      });
+    });
   }
 
   /** A root: the component registered as `name`, with these props. */

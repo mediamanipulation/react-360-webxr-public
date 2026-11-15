@@ -37,7 +37,7 @@ function sliceGeometry(radius, arc, height) {
   return geometry;
 }
 
-export default function CurvedPanel({surface, children}) {
+export default function CurvedPanel({surface, children, onEnter, onLeave}) {
   const gl = useThree(state => state.gl);
   const {width, height, radius, density} = surface;
   const mesh = useRef(null);
@@ -111,7 +111,7 @@ export default function CurvedPanel({surface, children}) {
         scene,
         {camera},
       )}
-      <mesh ref={mesh} geometry={geometry}>
+      <mesh ref={mesh} geometry={geometry} onPointerEnter={onEnter} onPointerLeave={onLeave}>
         {/* Drawn into the texture with blending, its colors are already
             multiplied by their opacity */}
         <meshBasicMaterial

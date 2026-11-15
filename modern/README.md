@@ -18,8 +18,8 @@ It keeps React 360's API. The demo here is the same app as
 `Environment`, `AudioModule`, `VideoModule` and `ControllerInfo`, imported from
 `react-360` as before.
 
-This is a first slice, not a finished replacement. See
-[what's not here yet](#whats-not-here-yet).
+It runs the demo and all four examples. See [what's not here
+yet](#whats-not-here-yet) for the gaps that remain.
 
 ## Run it
 
@@ -43,31 +43,31 @@ serves it.
 
 ## The examples
 
-Two of the four demos in [`../examples`](../examples/README.md) run on this
-runtime, with their React code loaded from there unchanged:
+All four demos in [`../examples`](../examples/README.md) run on this runtime,
+loaded from there:
 
-- http://localhost:8083/examples/code-city/index.html. Only
-  [`examples/code-city/client.jsx`](examples/code-city/client.jsx), which sets
-  up the scene, is new.
-- http://localhost:8083/examples/solar-system/index.html. Its `Planet` custom
-  view, a class written against the old runtime's internals, is now
-  [`examples/solar-system/Planet.jsx`](examples/solar-system/Planet.jsx), an
-  ordinary react-three-fiber component about half the length.
+| Demo | Address | What is new here |
+| --- | --- | --- |
+| Code city | http://localhost:8083/examples/code-city/index.html | Only its client file |
+| Solar system | http://localhost:8083/examples/solar-system/index.html | Its client file, and its planet view rewritten as a react-three-fiber component ([`Planet.jsx`](examples/solar-system/Planet.jsx)), about half the length of the original |
+| Controller sandbox | http://localhost:8083/examples/controller-sandbox/index.html | Only its client file. Its custom view class and native module run as they are |
+| Sound visualizer | http://localhost:8083/examples/sound-visualizer/index.html | Only its client file. Its custom view class, native module and synthesizer run as they are |
 
-Add `?emulate` to either for the virtual headset.
+A client file is the short file that creates the `ReactInstance` and places
+the roots. Add `?emulate` to any address for the virtual headset.
 
 ## Tests
 
 ```bash
 npm test        # unit tests
-npm run smoke   # the demo in a headless browser, on the page and in emulated VR
+npm run smoke   # the demo and the examples in a headless browser
 ```
 
-The smoke test clicks a scene button with the mouse, enters VR, clicks another
-with the controller's ray and trigger, swaps the controllers for hands, and
-leaves again. Then it loads the code city, counts its buildings and filters
-them from the panel, and checks that the solar system's planets are there and
-moving.
+The smoke test clicks a scene button with the mouse, enters VR in the
+emulator, clicks another with the controller's ray and trigger, pushes a
+thumbstick, swaps the controllers for hands, and leaves again. Then it runs
+each example: it filters the code city, watches the planets move, launches
+and clears a shape in the sandbox, and starts the music.
 
 ## Moving an app onto it
 
@@ -90,35 +90,51 @@ App code needs three small changes, which are all the demo needed:
 | React 360 | State |
 | --- | --- |
 | `View`, `Text`, `Image` | Flexbox layout, borders, radii, colors, padding and margins, from the same style objects |
-| `VrButton` | `onClick`, `onEnter`, `onExit` and the click sounds, for mouse, controllers, hands and gaze |
+| `VrButton` | `onClick`, `onEnter`, `onExit` and the click sounds, for mouse, touch, controllers, hands and gaze |
+| `onInput` | Button presses and `axis` events from thumbsticks and touchpads, sent to what the pointer is over |
 | `StyleSheet`, style arrays | Yes |
 | `Animated` | `Value`, `timing`, `spring`, `sequence`, `parallel`, `interpolate`, and animated `View`, `Text` and `Image` |
 | `asset()` | Yes |
-| `Environment` | 360 photo and video backgrounds |
-| `AudioModule` | Environmental sound and one-shots |
+| `Environment` | 360 photo and video backgrounds, mono or stereo (`3DTB`, `3DBT`, `3DLR`) |
+| `AudioModule` | Environmental sound, one-shots and named sounds. With `is3d` and a `position`, a sound is heard from its place in the world as you turn your head |
 | `VideoModule` | Players with play, pause, seek and status events |
 | `ControllerInfo` | Controllers and hands of the VR session, and gamepads |
-| Custom views | `requireNativeComponent(name)` draws the component registered under that name in the `customViews` option. A custom view is now any React component |
-| `ReactInstance` | `createRoot`, `renderToSurface`, `getDefaultSurface`, `getAssetURL`, `enterVR`, `exitVR`, `vrState`, `scene`, and the `xr` options |
-| `Surface` | Size, angle, radius and density |
+| `Surface` | Curved (cylinder) and flat panels, with size, angle, radius and density |
 | `Location`, `renderToLocation` | 3D content placed in the world |
 | `Box`, `Plane`, `Sphere`, `Cylinder` | With `lit`, `wireframe`, color, opacity, style transforms and pointer events |
 | `Entity` / `Model` | glTF 2 and OBJ (with MTL) models |
 | `AmbientLight`, `PointLight`, `DirectionalLight`, `SpotLight` | Yes. Intensities are scaled to look as they did on three.js r87 |
 | `View` and `VrButton` in a location | Groups that place and catch clicks for their 3D children |
+| Custom views | The `customViews` option takes React components, usually react-three-fiber ones, and also classes written for the original runtime (`RCTBaseView` with a `UIView`). `requireNativeComponent(name)` draws them |
+| Native modules | The `nativeModules` option takes objects with a `name`, or the original runtime's `Module` classes. The app calls them through `NativeModules`, and they send events through `DeviceEventEmitter` |
+| `ReactInstance` | `createRoot`, `renderToSurface`, `renderToLocation`, `getAssetURL`, `enterVR`, `exitVR`, `whenReady`, `scene`, the `frame` and `xr` options, and the parts of `vrState`, `compositor` and `runtime` that client code uses |
+
+### How it differs underneath
+
+- **One thread.** The original ran the React app in a web worker and talked to
+  the three.js side over a bridge. Here they share a thread, so custom views
+  and native modules are called directly, and `NativeModules` methods return
+  their values instead of promises of them (`ControllerInfo.getControllers()`
+  still returns a promise).
+- **Curved panels are textures.** A cylinder surface's UI is drawn into a
+  texture each frame and shown on a curved mesh. Flat surfaces are drawn
+  straight into the scene, which is sharper and cheaper, so prefer them for
+  panels with a lot of text.
+- **The floor is the origin in VR.** Content is still laid out around the
+  viewer's head: the runtime moves it there when a session starts, and
+  `vrState.getReferenceSpace()` gives a space with its origin at that point.
+- **Clicks are timed.** A press held for more than 1.5 seconds is not a click.
 
 ## What's not here yet
 
-- **Curved panels.** Cylinder surfaces are drawn flat.
-- **Native modules.** The controller sandbox and the sound visualizer talk
-  to code on the other side of the old runtime's bridge. That has no
-  counterpart here yet, so those two examples are still to come.
-- **`axis` input events** and the full `onInput` event stream. `onInput`
-  reports presses only.
-- **Stereo panoramas**, spatial audio, the gaze cursor and the compass.
-- **Custom native modules and custom views** written for the old runtime.
-  Those were written against its internals and need rewriting as ordinary
-  React components or modules.
+- **Custom views that reach into the old runtime.** A view class runs here if
+  it draws with three.js through `this.view` and `frame()`, as the examples
+  do. One that relied on the old layout engine or on `THREE.Geometry`, which
+  three.js has since removed, needs updating.
+- **The gaze cursor and compass.** Controllers and hands show a ray and a dot
+  where it lands; there is no reticle for head-gaze-only headsets.
+- **`Pano`, `VideoPano`, `Scene` and `LiveEnvCamera`**, the older
+  component forms of what `Environment` does.
 - A few styles (`tintColor`, shadows) are ignored, with a console warning.
 - The built-in font lacks some characters, such as `×` and `¼`. They are
   drawn with plain ones (`x`, `1/4`).

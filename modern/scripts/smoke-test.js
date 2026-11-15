@@ -81,8 +81,13 @@ async function launchBrowser() {
       const browser = await chromium.launch({
         channel: channel === 'chromium' ? undefined : channel,
         headless: true,
-        // Software WebGL, so this runs the same on machines without a GPU
-        args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader'],
+        // Software WebGL, so this runs the same on machines without a GPU.
+        // Sound may start without a click, as it does after one in a real browser.
+        args: [
+          '--enable-unsafe-swiftshader',
+          '--use-angle=swiftshader',
+          '--autoplay-policy=no-user-gesture-required',
+        ],
       });
       console.log(`Running in ${channel} ${browser.version()}`);
       return browser;
@@ -178,6 +183,24 @@ async function run(page, step) {
       const image = texture && texture.image;
       return Boolean(image && image.src && image.src.endsWith(name));
     }, 'chess-world.jpg');
+  });
+
+  await step('pushing the thumbstick sends axis events to what the pointer is over', async () => {
+    await page.evaluate(async () => {
+      const input = await import('/src/input.js');
+      window.__axes = [];
+      // Stands in for a component under the pointer
+      input.addInputTarget(event => {
+        const e = event.nativeEvent.inputEvent;
+        if (e.type === 'axis') {
+          window.__axes.push(`${e.source} ${e.axisClass} ${e.value}`);
+        }
+      });
+      window.xrDevice.controllers.right.updateAxes('thumbstick', 1, 0);
+    });
+    await until(() => window.__axes.includes('xr_right thumbstickX 1'));
+    await page.evaluate(() => window.xrDevice.controllers.right.updateAxes('thumbstick', 0, 0));
+    await until(() => window.__axes.includes('xr_right thumbstickX 0'));
   });
 
   await step('putting the controllers down swaps them for hands', async () => {
@@ -288,6 +311,41 @@ async function runSolarSystem(page, step) {
   });
 }
 
+// The controller sandbox: a custom view class and a native module written
+// for the original runtime, run as they are
+async function runSandbox(page, step) {
+  await step('a click into empty space launches a shape in the sandbox', async () => {
+    await page.goto(`http://localhost:${PORT}/examples/controller-sandbox/index.html`);
+    await page.waitForFunction(() => window.sandboxWorld, null, {timeout: TIMEOUT});
+    await sleep(1000);
+    const {width, height} = page.viewportSize();
+    await page.mouse.click(width * 0.25, height * 0.25);
+    await page.waitForFunction(() => window.sandboxWorld.shapes.length === 1, null, {timeout: TIMEOUT});
+  });
+
+  await step('its panel clears the sandbox through the native module', async () => {
+    const {width, height} = page.viewportSize();
+    // The "Clear" button at the bottom of the panel
+    await page.mouse.click(width * 0.5, height * 0.87);
+    await page.waitForFunction(() => window.sandboxWorld.shapes.length === 0, null, {timeout: TIMEOUT});
+  });
+}
+
+// The sound visualizer: music from a native module, drawn by a custom view
+async function runSoundVisualizer(page, step) {
+  await step('the sound visualizer plays when its Play button is clicked', async () => {
+    await page.goto(`http://localhost:${PORT}/examples/sound-visualizer/index.html`);
+    await page.waitForFunction(() => window.soundEngine && window.r360 && window.r360.scene, null, {
+      timeout: TIMEOUT,
+    });
+    await sleep(1500);
+    assert.strictEqual(await page.evaluate(() => window.soundEngine.isPlaying()), false);
+    const {width, height} = page.viewportSize();
+    await page.mouse.click(width * 0.5, height * 0.72);
+    await page.waitForFunction(() => window.soundEngine.isPlaying(), null, {timeout: TIMEOUT});
+  });
+}
+
 async function main() {
   let stopServer = () => {};
   let browser = null;
@@ -311,6 +369,8 @@ async function main() {
     await run(page, step);
     await runCodeCity(page, step);
     await runSolarSystem(page, step);
+    await runSandbox(page, step);
+    await runSoundVisualizer(page, step);
     assert.deepStrictEqual(errors, [], 'The page reported errors');
     console.log('The modern runtime smoke test passed');
   } catch (error) {

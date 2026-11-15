@@ -95,6 +95,61 @@ export function requireNativeComponent(name) {
   return NativeComponent;
 }
 
+const nativeModules = new Map();
+
+export function registerNativeModule(module) {
+  if (!module || !module.name) {
+    throw new Error('react-360: a native module needs a name');
+  }
+  nativeModules.set(module.name, module);
+}
+
+// Apps read `const {Thing} = NativeModules` when their files load, which is
+// before the ReactInstance that registers Thing exists. So each name gives a
+// stand-in that finds the real module when one of its methods is called.
+const standIns = new Map();
+
+function standIn(name) {
+  if (!standIns.has(name)) {
+    standIns.set(
+      name,
+      new Proxy(
+        {},
+        {
+          get(target, method) {
+            const module = nativeModules.get(name);
+            if (module) {
+              const value = module[method];
+              return typeof value === 'function' ? value.bind(module) : value;
+            }
+            if (typeof method !== 'string' || method === 'then') {
+              return undefined;
+            }
+            return () => {
+              throw new Error(
+                `react-360: no native module is registered as "${name}". ` +
+                  'Pass it in the nativeModules option of the ReactInstance.',
+              );
+            };
+          },
+        },
+      ),
+    );
+  }
+  return standIns.get(name);
+}
+
+/**
+ * The modules an app can call: the built-in ones, and those passed in the
+ * ReactInstance's `nativeModules` option.
+ */
+export const NativeModules = new Proxy(
+  {},
+  {
+    get: (target, name) => (typeof name === 'string' ? standIn(name) : undefined),
+  },
+);
+
 const components = new Map();
 
 export const AppRegistry = {
