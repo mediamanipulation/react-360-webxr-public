@@ -58,6 +58,7 @@ export default function WebXRDemo() {
   const [index, setIndex] = useState(0);
   const seconds = useSecondsSince(index);
   const controllers = useControllers();
+  const [lastAxis, setLastAxis] = useState(null);
   const controllerList = controllers
     .map(controller => `${controller.hand || 'no hand'}: ${controller.id} (${controller.buttons} buttons)`)
     .join(', ');
@@ -74,7 +75,15 @@ export default function WebXRDemo() {
       />)
   }
   return (
-    <View style={styles.panel}>
+    <View
+      style={styles.panel}
+      onInput={e => {
+        // Thumbsticks and touchpads, while the pointer is over the panel
+        const event = e.nativeEvent.inputEvent;
+        if (event.type === 'axis') {
+          setLastAxis(`${event.source} ${event.axisClass || event.axis} ${event.value.toFixed(2)}`);
+        }
+      }}>
       <View style={styles.section}>
         {sceneButtons}
       </View>
@@ -87,6 +96,9 @@ export default function WebXRDemo() {
       </Text>
       <Text style={styles.controllers}>
         {`Controllers: ${controllerList || 'none'}`}
+      </Text>
+      <Text style={styles.controllers}>
+        {`Last stick move: ${lastAxis || 'none yet'}`}
       </Text>
     </View>
   );

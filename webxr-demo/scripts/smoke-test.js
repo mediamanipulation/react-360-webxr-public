@@ -3,7 +3,7 @@
  *
  * Opens this demo in a headless browser with IWER's emulated Quest 3
  * (index.html?emulate), enters VR through the "View in VR" button, pulls a
- * trigger, puts the controllers down for hands, pinches, and leaves again,
+ * trigger, pushes a thumbstick, puts the controllers down for hands, pinches, and leaves again,
  * checking what the React 360 runtime makes of each step.
  *
  *   npm run smoke
@@ -106,7 +106,7 @@ async function launchBrowser() {
 // Runs in the page, before the test steps: records what the runtime asks
 // the browser for, and what it tells the React app, in window.__smoke
 function instrument() {
-  const smoke = (window.__smoke = {requests: [], buttons: [], controllerEvents: []});
+  const smoke = (window.__smoke = {requests: [], buttons: [], axes: [], controllerEvents: []});
 
   const xr = navigator.xr;
   const requestSession = xr.requestSession.bind(xr);
@@ -122,6 +122,9 @@ function instrument() {
     for (const event of events) {
       if (event.type === 'button') {
         smoke.buttons.push(`${event.source} ${event.buttonClass} ${event.action}`);
+      }
+      if (event.type === 'axis') {
+        smoke.axes.push(`${event.source} ${event.axisClass} ${event.value}`);
       }
     }
     return queueEvents(events);
@@ -216,6 +219,13 @@ async function run(page, step) {
     await until(() => window.__smoke.buttons.includes('xr_right confirm down'));
     await smoke(() => window.xrDevice.controllers.right.updateButtonValue('trigger', 0));
     await until(() => window.__smoke.buttons.includes('xr_right confirm up'));
+  });
+
+  await step('pushing the thumbstick sends axis events', async () => {
+    await smoke(() => window.xrDevice.controllers.right.updateAxes('thumbstick', 1, 0));
+    await until(() => window.__smoke.axes.includes('xr_right thumbstickX 1'));
+    await smoke(() => window.xrDevice.controllers.right.updateAxes('thumbstick', 0, 0));
+    await until(() => window.__smoke.axes.includes('xr_right thumbstickX 0'));
   });
 
   await step('putting the controllers down swaps them for hands', async () => {

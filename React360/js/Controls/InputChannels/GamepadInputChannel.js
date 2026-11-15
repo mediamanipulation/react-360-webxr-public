@@ -10,7 +10,7 @@
  */
 
 import type VRState from '../../Compositor/VRState';
-import type {ButtonEvent, InputEvent, InputChannel} from './Types';
+import type {AxisEvent, ButtonEvent, InputEvent, InputChannel} from './Types';
 
 type GamepadEvent = {gamepad: Gamepad};
 
@@ -29,6 +29,12 @@ const getGamepads = (navigator.getGamepads
 ).bind(navigator);
 
 const LONG_PRESS_TIME = 500;
+// A stick at rest rarely reads exactly 0. Anything this close to the center
+// counts as the center.
+const AXIS_DEADZONE = 0.1;
+// How far an axis has to move from the value last reported to be reported
+// again, so a stick held still doesn't send an event every frame.
+const AXIS_STEP = 0.01;
 
 // Touch controller buttons: thumbstick, trigger, grip, A/X, B/Y
 const MAPPING_SHARED_TOUCH = [
@@ -95,6 +101,16 @@ export const XR_STANDARD_MAPPING = [
 ];
 
 const DEFAULT_MAPPING = ['confirm'];
+
+// Names for the axes of the two gamepad layouts browsers define. Other
+// gamepads still send axis events, with only the axis number.
+export const STANDARD_AXES = ['leftX', 'leftY', 'rightX', 'rightY'];
+export const XR_STANDARD_AXES = ['touchpadX', 'touchpadY', 'thumbstickX', 'thumbstickY'];
+const AXES_BY_MAPPING = {
+  standard: STANDARD_AXES,
+  'xr-standard': XR_STANDARD_AXES,
+};
+const NO_AXIS_NAMES = [];
 
 export default class GamepadInputChannel implements InputChannel {
   _customMapping: {[id: string]: Mapping};
@@ -251,6 +267,39 @@ export default class GamepadInputChannel implements InputChannel {
     }
   }
 
+  /**
+   * Sticks and touchpads: an 'axis' event each time one moves, with a value
+   * from -1 to 1 (left to right, and up to down), and a last one with value
+   * 0 when it is let go.
+   */
+  _fillAxisEvents(
+    acc: Array<InputEvent>,
+    source: string,
+    state: GamepadState,
+    axes: $ReadOnlyArray<number>,
+    names: Array<string>,
+  ) {
+    for (let axis = 0; axis < axes.length; axis++) {
+      const raw = axes[axis];
+      const value = Math.abs(raw) < AXIS_DEADZONE ? 0 : raw;
+      const previous = state.axes[axis] || 0;
+      if (value === previous || (value !== 0 && Math.abs(value - previous) < AXIS_STEP)) {
+        continue;
+      }
+      state.axes[axis] = value;
+      const event: AxisEvent = {
+        type: 'axis',
+        axis: axis,
+        value: value,
+        source: source,
+      };
+      if (names[axis]) {
+        event.axisClass = names[axis];
+      }
+      acc.push(event);
+    }
+  }
+
   getEvents(acc: Array<InputEvent>): void {
     const now = Date.now();
     const gamepads = getGamepads();
@@ -272,8 +321,13 @@ export default class GamepadInputChannel implements InputChannel {
           gamepad.buttons,
           mapping,
         );
-
-        // TODO: consider fetching axes change events
+        this._fillAxisEvents(
+          acc,
+          `gamepad_${id}`,
+          this._previousState[id],
+          gamepad.axes,
+          AXES_BY_MAPPING[gamepad.mapping] || NO_AXIS_NAMES,
+        );
       } else {
         if (this._previousState[id]) {
           delete this._previousState[id];
@@ -306,6 +360,13 @@ export default class GamepadInputChannel implements InputChannel {
             state,
             gamepad.buttons,
             this.xrMappingLookup(inputSource, gamepad),
+          );
+          this._fillAxisEvents(
+            acc,
+            source,
+            state,
+            gamepad.axes,
+            AXES_BY_MAPPING[gamepad.mapping] || NO_AXIS_NAMES,
           );
         }
       }

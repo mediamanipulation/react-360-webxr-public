@@ -12,6 +12,7 @@
 export type AxisEvent = {
   axis: number,
   axisClass?: string,
+  source?: string,
   type: 'axis',
   value: number,
 };

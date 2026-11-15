@@ -22,6 +22,8 @@ whose root component is written with hooks.
 The last line lists the connected controllers, from React 360's
 `ControllerInfo`. On the page that's any gamepads plugged in. In VR it's the
 headset's controllers, and it changes to your hands when you put them down.
+Under it is the last thumbstick or touchpad movement, from the `axis` input
+events the panel gets while you point at it.
 
 ## Try VR without a headset
 
@@ -72,7 +74,8 @@ npm run smoke
 
 runs the real runtime in a headless browser against the emulated Quest 3. It
 clicks "View in VR", checks that an `immersive-vr` session starts with both
-controllers, pulls a trigger, puts the controllers down for hands and pinches,
+controllers, pulls a trigger, pushes a thumbstick, puts the controllers down
+for hands and pinches,
 leaves VR, and enters it a second time. It uses the dev server if one is
 running on port 8081 and starts its own otherwise, so the first run waits for
 Metro to build the bundles. It needs Chrome or Edge installed; see the top of

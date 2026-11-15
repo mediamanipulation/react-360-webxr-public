@@ -52,6 +52,27 @@ input source:
   `xr_right`, so the two can be matched up. Gamepads have it too, as
   `gamepad_0`.
 
+Thumbsticks and touchpads send `axis` input events, to the `onInput` of the
+component under the pointer like button events. This is new: React 360 never
+reported axes, for WebVR controllers or plain gamepads.
+
+```js
+<View onInput={e => {
+  const event = e.nativeEvent.inputEvent;
+  if (event.type === 'axis' && event.axisClass === 'thumbstickX') {
+    turn(event.value); // -1 (left) to 1 (right), 0 when let go
+  }
+}} />
+```
+
+- `value` runs from -1 to 1, left to right and up to down. Within 0.1 of the
+  center it is reported as 0, and an event is only sent when it changes.
+- `axis` is the axis number on the gamepad, and `source` matches the
+  `source` of button events and of `ControllerInfo`.
+- `axisClass` names it where the layout is known: `touchpadX`, `touchpadY`,
+  `thumbstickX` and `thumbstickY` for WebXR controllers, and `leftX`, `leftY`,
+  `rightX` and `rightY` for standard gamepads.
+
 The session lifecycle, the pointer's choice of controller and `ControllerInfo`
 have unit tests beside them in `__tests__` folders, and there is a smoke test
 that runs a whole session against an emulated headset. Both run from
