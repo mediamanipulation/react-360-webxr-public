@@ -52,6 +52,35 @@ WebXR only runs in a secure context. For a Meta Quest, either:
   so it needs to be on your PATH, and the browser will ask you to accept the
   certificate.
 
+## Tests
+
+This app also holds the test tooling for the runtime in `../React360`, which
+has no dependencies of its own installed.
+
+```bash
+npm test
+```
+
+runs the runtime's Jest unit tests (`../React360/js/**/__tests__`). Those for
+the WebXR port use a fake `navigator.xr` and fake sessions: `VRState` for the
+session lifecycle, `ControllerRaycaster` for which controller the pointer
+follows, and `ControllerInfo` for the controllers reported to the app.
+
+```bash
+npm run smoke
+```
+
+runs the real runtime in a headless browser against the emulated Quest 3. It
+clicks "View in VR", checks that an `immersive-vr` session starts with both
+controllers, pulls a trigger, puts the controllers down for hands and pinches,
+leaves VR, and enters it a second time. It uses the dev server if one is
+running on port 8081 and starts its own otherwise, so the first run waits for
+Metro to build the bundles. It needs Chrome or Edge installed; see the top of
+[`scripts/smoke-test.js`](scripts/smoke-test.js) to pick the browser.
+
+Neither replaces a headset: the emulator has no real tracking, compositor or
+system menu.
+
 ## Production build
 
 ```bash

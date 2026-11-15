@@ -52,6 +52,12 @@ input source:
   `xr_right`, so the two can be matched up. Gamepads have it too, as
   `gamepad_0`.
 
+The session lifecycle, the pointer's choice of controller and `ControllerInfo`
+have unit tests beside them in `__tests__` folders, and there is a smoke test
+that runs a whole session against an emulated headset. Both run from
+[`../webxr-demo`](../webxr-demo/README.md#tests) with `npm test` and
+`npm run smoke`.
+
 If your `client.js` used the VR internals directly, these changed:
 
 - `r360.vrState` tracks the WebXR session instead of a `VRDisplay`:
