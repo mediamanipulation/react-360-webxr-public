@@ -11,7 +11,7 @@
 
 import * as THREE from 'three';
 import bundleFromLocation from './bundleFromLocation';
-import Compositor from './Compositor/Compositor';
+import Compositor, {type XRLayerOptions} from './Compositor/Compositor';
 import Location from './Compositor/Location';
 import type Surface from './Compositor/Surface';
 import Overlay, {type OverlayInterface} from './Compositor/Overlay';
@@ -71,6 +71,7 @@ export type React360Options = {
   frame?: number => mixed,
   fullScreen?: boolean,
   nativeModules?: Array<Module | NativeModuleInitializer>,
+  xr?: XRLayerOptions,
   customVideoPlayers?: Array<Class<VideoPlayerImplementation>>,
 };
 
@@ -98,6 +99,7 @@ export default class ReactInstance {
   _events: Array<InputEvent>;
   _focused2DSurface: null | Surface;
   _frameHook: ?(number) => mixed;
+  _xrOptions: XRLayerOptions;
   _lastFrameTime: number;
   _looping: boolean;
   _needsResize: boolean;
@@ -136,6 +138,7 @@ export default class ReactInstance {
     this._lastFrameTime = 0;
     this._focused2DSurface = null;
     this._frameHook = options.frame;
+    this._xrOptions = options.xr || {};
 
     if (options.fullScreen) {
       parent.style.position = 'fixed';
@@ -188,6 +191,11 @@ export default class ReactInstance {
     this.vrState = new VRState();
     // In VR, the controllers are the session's input sources
     this.runtime.context.ControllerInfo._setVRState(this.vrState);
+    // The viewer recentered from the headset. Poses are read afresh every
+    // frame, so the runtime has nothing to redo: this tells the app.
+    this.vrState.onReset(() => {
+      this.emitEvent({type: 'recenter', timeStamp: Date.now()});
+    });
     this.vrState.onDisplayChange(supported => {
       if (this.vrState.isPresenting()) {
         return;
@@ -555,7 +563,7 @@ export default class ReactInstance {
       return;
     }
     this.vrState
-      .requestSession(session => this.compositor.startXR(session))
+      .requestSession(session => this.compositor.startXR(session, this._xrOptions))
       .then(() => {
         this.emitEvent({
           type: 'entervr',

@@ -37,6 +37,7 @@ export default class VRState {
   _exitCallbacks: Array<Callback>;
   _frame: ?XRFrame;
   _referenceSpace: ?XRReferenceSpace;
+  _resetCallbacks: Array<Callback>;
   _session: ?XRSession;
 
   constructor() {
@@ -46,8 +47,10 @@ export default class VRState {
     this._exitCallbacks = [];
     this._frame = null;
     this._referenceSpace = null;
+    this._resetCallbacks = [];
     this._session = null;
 
+    (this: any)._onReset = this._onReset.bind(this);
     (this: any)._onSessionEnd = this._onSessionEnd.bind(this);
     (this: any)._updateSupported = this._updateSupported.bind(this);
 
@@ -112,6 +115,16 @@ export default class VRState {
   }
 
   /**
+   * Called when the origin of the reference space moves during a session,
+   * which is what happens when the viewer recenters from the headset (holding
+   * the Meta button on a Quest). Poses read from then on are relative to the
+   * new origin, so anything remembered from earlier poses is out of date.
+   */
+  onReset(cb: Callback) {
+    this._resetCallbacks.push(cb);
+  }
+
+  /**
    * Called with a boolean whenever immersive VR support changes.
    */
   onDisplayChange(cb: Callback) {
@@ -166,6 +179,7 @@ export default class VRState {
             this._session = session;
             this._referenceSpace = space;
             session.addEventListener('end', this._onSessionEnd);
+            space.addEventListener('reset', this._onReset);
             this._callEnterCallbacks();
             return session;
           },
@@ -182,9 +196,18 @@ export default class VRState {
     return session ? session.end() : Promise.resolve();
   }
 
+  _onReset(event: Event) {
+    for (let i = 0; i < this._resetCallbacks.length; i++) {
+      this._resetCallbacks[i](event);
+    }
+  }
+
   _onSessionEnd() {
     if (this._session) {
       this._session.removeEventListener('end', this._onSessionEnd);
+    }
+    if (this._referenceSpace) {
+      this._referenceSpace.removeEventListener('reset', this._onReset);
     }
     this._session = null;
     this._referenceSpace = null;

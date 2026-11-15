@@ -34,7 +34,7 @@ function listeners() {
 
 // An XRSession as far as VRState uses one. end() fires the 'end' event, as
 // the browser does however a session ends.
-function fakeSession(space = {}) {
+function fakeSession(space = listeners()) {
   const session = {
     ...listeners(),
     requestReferenceSpace: jest.fn(() => Promise.resolve(space)),
@@ -162,7 +162,7 @@ describe('VRState', () => {
     });
 
     it("uses the 'local' reference space", async () => {
-      const space = {};
+      const space = listeners();
       xr.session = fakeSession(space);
       await state.requestSession(prepared());
       expect(xr.session.requestReferenceSpace).toBeCalledWith('local');
@@ -293,6 +293,24 @@ describe('VRState', () => {
       session.dispatch('end');
       expect(state.isPresenting()).toBe(true);
       expect(onExit).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('recentering', () => {
+    it('reports the reference space being reset, until the session ends', async () => {
+      const xr = (navigator.xr = fakeXR(true));
+      const space = listeners();
+      xr.session = fakeSession(space);
+      const state = new VRState();
+      const onReset = jest.fn();
+      state.onReset(onReset);
+      await state.requestSession(prepared());
+
+      space.dispatch('reset');
+      expect(onReset).toHaveBeenCalledTimes(1);
+
+      await state.endSession();
+      expect(space.listening('reset')).toBe(false);
     });
   });
 

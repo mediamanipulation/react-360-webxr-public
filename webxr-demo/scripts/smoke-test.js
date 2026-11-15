@@ -228,6 +228,15 @@ async function run(page, step) {
     await until(() => window.__smoke.axes.includes('xr_right thumbstickX 0'));
   });
 
+  await step('a reset of the reference space is reported as a recenter', async () => {
+    await smoke(() => {
+      window.__smoke.recenters = 0;
+      window.r360.eventEmitter.on('recenter', () => window.__smoke.recenters++);
+      window.r360.vrState.getReferenceSpace().dispatchEvent(new Event('reset'));
+    });
+    assert.strictEqual(await smoke(() => window.__smoke.recenters), 1);
+  });
+
   await step('putting the controllers down swaps them for hands', async () => {
     await smoke(() => {
       window.__smoke.controllerEvents.length = 0;

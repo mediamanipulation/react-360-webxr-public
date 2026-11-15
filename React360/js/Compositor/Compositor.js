@@ -33,6 +33,20 @@ function getXRCamera(index: number): THREE.PerspectiveCamera {
   return xrCameras[index];
 }
 
+/**
+ * How to draw into the headset. Both trade sharpness for frame rate, and both
+ * are left at the browser's defaults when not given.
+ * - framebufferScaleFactor: the size of the framebuffer, relative to the
+ *   browser's default size for the device. Below 1 draws fewer pixels.
+ * - fixedFoveation: from 0 (none) to 1 (most). Draws the edges of each eye's
+ *   view at a lower resolution. On a Meta Quest this is a cheap way to gain
+ *   frame rate.
+ */
+export type XRLayerOptions = {
+  fixedFoveation?: number,
+  framebufferScaleFactor?: number,
+};
+
 export default class Compositor {
   _camera: THREE.Camera;
   _canvas: HTMLCanvasElement;
@@ -229,11 +243,21 @@ export default class Compositor {
    * Prepare to render into a new WebXR session: make the GL context compatible
    * with the XR device and give the session a base layer to draw into.
    */
-  startXR(session: XRSession): Promise<void> {
+  startXR(session: XRSession, options: XRLayerOptions = {}): Promise<void> {
     const gl = this._renderer.getContext();
     return gl.makeXRCompatible().then(() => {
+      const layerInit: Object = {antialias: true};
+      if (typeof options.framebufferScaleFactor === 'number') {
+        layerInit.framebufferScaleFactor = options.framebufferScaleFactor;
+      }
+      const baseLayer = new XRWebGLLayer(session, gl, layerInit);
+      // Not every browser has foveation: where it is missing, the attribute
+      // is not there to set
+      if (typeof options.fixedFoveation === 'number' && 'fixedFoveation' in baseLayer) {
+        baseLayer.fixedFoveation = options.fixedFoveation;
+      }
       session.updateRenderState({
-        baseLayer: new XRWebGLLayer(session, gl, {antialias: true}),
+        baseLayer: baseLayer,
         depthNear: this._camera.near,
         depthFar: this._camera.far,
       });

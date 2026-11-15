@@ -52,6 +52,25 @@ input source:
   `xr_right`, so the two can be matched up. Gamepads have it too, as
   `gamepad_0`.
 
+When the viewer recenters from the headset (holding the Meta button on a
+Quest), the runtime emits a `recenter` event: `r360.eventEmitter.on('recenter',
+...)`, or `r360.vrState.onReset(...)`. The browser moves the origin of the
+`local` space to the new head position by itself and the runtime reads poses
+afresh each frame, so content follows without the app doing anything. The
+event is for apps that keep something of their own from earlier poses.
+
+Two options tune how the session is drawn, for frame rate on standalone
+headsets. Both are left at the browser's defaults unless given:
+
+```js
+new ReactInstance(bundle, parent, {
+  xr: {
+    fixedFoveation: 0.5, // 0 to 1: lower resolution towards the edges of view
+    framebufferScaleFactor: 0.8, // below 1 draws fewer pixels
+  },
+});
+```
+
 Thumbsticks and touchpads send `axis` input events, to the `onInput` of the
 component under the pointer like button events. This is new: React 360 never
 reported axes, for WebVR controllers or plain gamepads.
