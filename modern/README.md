@@ -43,11 +43,18 @@ serves it.
 
 ## The examples
 
-http://localhost:8083/examples/code-city/index.html is the code city from
-[`../examples`](../examples/README.md), running on this runtime. Its React
-code is loaded from `../examples/code-city` unchanged: only
-[`examples/code-city/client.jsx`](examples/code-city/client.jsx), which sets
-up the scene, is new. Add `?emulate` for the virtual headset.
+Two of the four demos in [`../examples`](../examples/README.md) run on this
+runtime, with their React code loaded from there unchanged:
+
+- http://localhost:8083/examples/code-city/index.html. Only
+  [`examples/code-city/client.jsx`](examples/code-city/client.jsx), which sets
+  up the scene, is new.
+- http://localhost:8083/examples/solar-system/index.html. Its `Planet` custom
+  view, a class written against the old runtime's internals, is now
+  [`examples/solar-system/Planet.jsx`](examples/solar-system/Planet.jsx), an
+  ordinary react-three-fiber component about half the length.
+
+Add `?emulate` to either for the virtual headset.
 
 ## Tests
 
@@ -58,8 +65,9 @@ npm run smoke   # the demo in a headless browser, on the page and in emulated VR
 
 The smoke test clicks a scene button with the mouse, enters VR, clicks another
 with the controller's ray and trigger, swaps the controllers for hands, and
-leaves again. Then it loads the code city, counts its buildings, and filters
-them from the panel.
+leaves again. Then it loads the code city, counts its buildings and filters
+them from the panel, and checks that the solar system's planets are there and
+moving.
 
 ## Moving an app onto it
 
@@ -90,6 +98,7 @@ App code needs three small changes, which are all the demo needed:
 | `AudioModule` | Environmental sound and one-shots |
 | `VideoModule` | Players with play, pause, seek and status events |
 | `ControllerInfo` | Controllers and hands of the VR session, and gamepads |
+| Custom views | `requireNativeComponent(name)` draws the component registered under that name in the `customViews` option. A custom view is now any React component |
 | `ReactInstance` | `createRoot`, `renderToSurface`, `getDefaultSurface`, `getAssetURL`, `enterVR`, `exitVR`, `vrState`, `scene`, and the `xr` options |
 | `Surface` | Size, angle, radius and density |
 | `Location`, `renderToLocation` | 3D content placed in the world |
@@ -101,9 +110,9 @@ App code needs three small changes, which are all the demo needed:
 ## What's not here yet
 
 - **Curved panels.** Cylinder surfaces are drawn flat.
-- **Custom views and native modules.** The other three examples draw with
-  three.js code written against the old runtime's internals. Here that code
-  becomes ordinary react-three-fiber components, which is still to do.
+- **Native modules.** The controller sandbox and the sound visualizer talk
+  to code on the other side of the old runtime's bridge. That has no
+  counterpart here yet, so those two examples are still to come.
 - **`axis` input events** and the full `onInput` event stream. `onInput`
   reports presses only.
 - **Stereo panoramas**, spatial audio, the gaze cursor and the compass.
@@ -111,5 +120,7 @@ App code needs three small changes, which are all the demo needed:
   Those were written against its internals and need rewriting as ordinary
   React components or modules.
 - A few styles (`tintColor`, shadows) are ignored, with a console warning.
+- The built-in font lacks some characters, such as `×` and `¼`. They are
+  drawn with plain ones (`x`, `1/4`).
 
 It has been checked on the page and in the emulator, not yet on a headset.

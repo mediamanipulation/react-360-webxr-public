@@ -58,11 +58,16 @@ export function View({style, children, onEnter, onExit, onMove, onInput, ...rest
   );
 }
 
+// Characters the built-in font has no glyph for, and what is drawn instead
+const MISSING_GLYPHS = {'×': 'x', '¼': '1/4', '½': '1/2', '¾': '3/4', '…': '...', '→': '->', '←': '<-'};
+const MISSING = new RegExp(`[${Object.keys(MISSING_GLYPHS).join('')}]`, 'g');
+
 // uikit text takes strings and numbers. Anything React would skip is skipped.
 function textOf(children) {
   return React.Children.toArray(children)
     .filter(child => typeof child === 'string' || typeof child === 'number')
-    .join('');
+    .join('')
+    .replace(MISSING, character => MISSING_GLYPHS[character]);
 }
 
 export function Text({style, children, ...rest}) {

@@ -27,7 +27,7 @@ const SAME = new Set([
   'borderWidth', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
   'borderColor', 'borderRadius',
   'borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius',
-  'color', 'fontSize', 'fontWeight', 'lineHeight', 'letterSpacing', 'textAlign',
+  'color', 'fontSize', 'fontWeight', 'letterSpacing', 'textAlign',
 ]);
 
 // Styles with no counterpart yet. Each is reported once, then ignored.
@@ -104,6 +104,9 @@ export function styleToProps(style) {
       props.flexBasis = 0;
     } else if (name === 'transform') {
       applyTransform(props, value);
+    } else if (name === 'lineHeight') {
+      // Pixels in React Native. A bare number would be a multiplier in uikit.
+      props.lineHeight = typeof value === 'number' ? `${value}px` : value;
     } else if (name === 'resizeMode') {
       props.objectFit = value === 'cover' ? 'cover' : 'fill';
     } else if (RENAMED[name]) {

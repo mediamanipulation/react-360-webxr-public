@@ -251,6 +251,42 @@ async function runCodeCity(page, step) {
   });
 }
 
+// The solar system example: a custom view, as a react-three-fiber component
+async function runSolarSystem(page, step) {
+  const spheres = () => {
+    let count = 0;
+    window.r360.scene.traverse(object => {
+      if (object.isMesh && object.geometry && object.geometry.type === 'SphereGeometry') {
+        count++;
+      }
+    });
+    return count;
+  };
+  await step('the solar system draws the Sun and eight planets', async () => {
+    await page.goto(`http://localhost:${PORT}/examples/solar-system/index.html`);
+    await page.waitForFunction(() => window.r360 && window.r360.scene, null, {timeout: TIMEOUT});
+    await page.waitForFunction(spheres, null, {timeout: TIMEOUT});
+    await sleep(500);
+    // Each body is a surface and a highlight shell
+    assert.strictEqual(await page.evaluate(spheres), 18);
+  });
+
+  await step('the planets move along their orbits', async () => {
+    const positions = () => {
+      const all = [];
+      window.r360.scene.traverse(object => {
+        if (object.isMesh && object.material && object.material.map && object.parent) {
+          all.push(Math.round(object.parent.position.x * 1000));
+        }
+      });
+      return all.join(',');
+    };
+    const before = await page.evaluate(positions);
+    await sleep(700);
+    assert.notStrictEqual(await page.evaluate(positions), before);
+  });
+}
+
 async function main() {
   let stopServer = () => {};
   let browser = null;
@@ -273,6 +309,7 @@ async function main() {
     };
     await run(page, step);
     await runCodeCity(page, step);
+    await runSolarSystem(page, step);
     assert.deepStrictEqual(errors, [], 'The page reported errors');
     console.log('The modern runtime smoke test passed');
   } catch (error) {

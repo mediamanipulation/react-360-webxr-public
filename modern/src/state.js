@@ -1,3 +1,5 @@
+import {createElement} from 'react';
+
 // What the pieces of the runtime share: the registered root components,
 // where assets live, what the background shows, and the events sent to apps.
 
@@ -59,6 +61,34 @@ export const DeviceEventEmitter = createEmitter();
 
 // How many lights the app has put in the scene itself
 export const appLights = createValue(0);
+
+// Views an app registers by name with the ReactInstance's `customViews`
+// option, and draws with requireNativeComponent(name)
+const customViews = new Map();
+
+export function registerCustomView(name, view) {
+  customViews.set(name, view);
+}
+
+/**
+ * The component for a custom view. On the original runtime these were
+ * classes drawing with three.js on the other side of a bridge; here a custom
+ * view is any React component, usually a react-three-fiber one.
+ */
+export function requireNativeComponent(name) {
+  function NativeComponent(props) {
+    const View = customViews.get(name);
+    if (!View) {
+      throw new Error(
+        `react-360: no custom view is registered as "${name}". ` +
+          'Pass it in the customViews option of the ReactInstance.',
+      );
+    }
+    return createElement(View, props);
+  }
+  NativeComponent.displayName = name;
+  return NativeComponent;
+}
 
 const components = new Map();
 

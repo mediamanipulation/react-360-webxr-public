@@ -8,7 +8,15 @@ import {XR, createXRStore} from '@react-three/xr';
 import {Container} from '@react-three/uikit';
 import * as THREE from 'three';
 import {followSession} from './controllers.js';
-import {AppRegistry, appLights, background, createEmitter, createValue, settings} from './state.js';
+import {
+  AppRegistry,
+  appLights,
+  background,
+  createEmitter,
+  createValue,
+  registerCustomView,
+  settings,
+} from './state.js';
 import {SpaceContext} from './three-d.jsx';
 
 // React 360 measures panels in pixels on a cylinder around the viewer:
@@ -345,6 +353,8 @@ export default class ReactInstance {
         height: '100%',
       });
     }
+
+    (options.customViews || []).forEach(({name, view}) => registerCustomView(name, view));
 
     this.eventEmitter = createEmitter();
     this._roots = createValue([]);

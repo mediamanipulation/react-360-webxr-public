@@ -50,6 +50,10 @@ describe('styleToProps', () => {
     warn.mockRestore();
   });
 
+  it('keeps line heights in pixels', () => {
+    expect(styleToProps({lineHeight: 40})).toEqual({lineHeight: '40px'});
+  });
+
   it('takes style arrays', () => {
     expect(styleToProps([{width: 1}, {width: 2}])).toEqual({width: 2});
   });

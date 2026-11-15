@@ -20,7 +20,7 @@ export {
   Sphere,
   SpotLight,
 } from './three-d.jsx';
-export {AppRegistry, DeviceEventEmitter, asset} from './state.js';
+export {AppRegistry, DeviceEventEmitter, asset, requireNativeComponent} from './state.js';
 export {StyleSheet} from './style.js';
 export {Animated, Environment, VideoModule};
 

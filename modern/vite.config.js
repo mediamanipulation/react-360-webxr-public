@@ -101,6 +101,7 @@ export default defineConfig({
       input: {
         demo: path.join(here, 'index.html'),
         'code-city': path.join(here, 'examples', 'code-city', 'index.html'),
+        'solar-system': path.join(here, 'examples', 'solar-system', 'index.html'),
       },
     },
   },
