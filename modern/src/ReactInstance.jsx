@@ -4,12 +4,14 @@
 import React, {Suspense, useEffect, useRef, useSyncExternalStore} from 'react';
 import {createRoot} from 'react-dom/client';
 import {Canvas, useFrame, useThree} from '@react-three/fiber';
-import {XR, createXRStore} from '@react-three/xr';
+import {PointerEvents, XR, createXRStore, noEvents} from '@react-three/xr';
 import {Container} from '@react-three/uikit';
 import * as THREE from 'three';
 import {followSession} from './controllers.js';
+import CurvedPanel from './CurvedPanel.jsx';
 import {
   AppRegistry,
+  CLICK_MS,
   appLights,
   background,
   createEmitter,
@@ -33,7 +35,7 @@ export class Surface {
   constructor(width = 1000, height = 600, shape = Surface.SurfaceShape.Flat) {
     this.width = width;
     this.height = height;
-    // Cylinder surfaces are drawn flat for now
+    // A Cylinder surface wraps round the viewer; a Flat one faces them
     this.shape = shape;
     this.radius = DEFAULT_RADIUS;
     this.density = PIXELS_AROUND;
@@ -115,6 +117,13 @@ function LocationGroup({location, children}) {
 
 function SurfacePanel({surface, children}) {
   useSyncExternalStore(surface._changed.subscribe, surface._changed.get);
+  if (surface.shape === Surface.SurfaceShape.Cylinder) {
+    return (
+      <group rotation={[surface.pitch, -surface.yaw, 0, 'YXZ']}>
+        <CurvedPanel surface={surface}>{children}</CurvedPanel>
+      </group>
+    );
+  }
   return (
     // Positive yaw turns the panel to the viewer's right, as in React 360
     <group rotation={[surface.pitch, -surface.yaw, 0, 'YXZ']}>
@@ -155,6 +164,15 @@ function HeadCentered({store, children}) {
     }
   });
   return <group ref={group}>{children}</group>;
+}
+
+// Tells the instance when the scene is mounted inside the XR session root
+function Ready({instance}) {
+  useEffect(() => {
+    instance._ready.set(true);
+    return () => instance._ready.set(false);
+  }, [instance]);
+  return null;
 }
 
 // Controller and hand models are lit, so a scene with no lights of its own
@@ -277,7 +295,9 @@ const BUTTON_STYLE = {
 function VRButton({instance}) {
   const supported = useSyncExternalStore(instance._supported.subscribe, instance._supported.get);
   const presenting = useSyncExternalStore(instance._presenting.subscribe, instance._presenting.get);
-  if (!supported) {
+  const ready = useSyncExternalStore(instance._ready.subscribe, instance._ready.get);
+  // A session can only start once the scene is up
+  if (!supported || !ready) {
     return null;
   }
   return (
@@ -293,13 +313,18 @@ function App({instance}) {
     <div style={{position: 'relative', width: '100%', height: '100%'}}>
       <Canvas
         flat
+        // The mouse, touch, controllers and hands all go through one pointer
+        // system, so they behave the same
+        events={noEvents}
         camera={{position: [0, 0, 0], fov: 60, near: 0.1, far: 1000}}
         style={{touchAction: 'none'}}
         onCreated={({scene}) => {
           // The three.js scene, for apps that add objects of their own
           instance.scene = scene;
         }}>
+        <PointerEvents clickThresholdMs={CLICK_MS} />
         <XR store={instance.xrStore}>
+          <Ready instance={instance} />
           <DefaultLights />
           <Background />
           <LookControls store={instance.xrStore} />
@@ -360,6 +385,7 @@ export default class ReactInstance {
     this._roots = createValue([]);
     this._supported = createValue(false);
     this._presenting = createValue(false);
+    this._ready = createValue(false);
     this._defaultSurface = new Surface(1000, 600, Surface.SurfaceShape.Cylinder);
     this._defaultLocation = new Location();
 
@@ -368,6 +394,9 @@ export default class ReactInstance {
       // Apps that want the emulator install it before creating the instance
       emulate: false,
       offerSession: options.offerSession !== false,
+      controller: {rayPointer: {clickThresholdMs: CLICK_MS}},
+      hand: {rayPointer: {clickThresholdMs: CLICK_MS}},
+      transientPointer: {clickThresholdMs: CLICK_MS},
       foveation: xr.fixedFoveation,
       frameBufferScaling: xr.framebufferScaleFactor,
     });

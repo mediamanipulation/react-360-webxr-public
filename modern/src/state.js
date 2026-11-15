@@ -49,6 +49,11 @@ export function createEmitter() {
   };
 }
 
+// How long a press may last and still be a click when it is let go. The
+// pointer library's own limit is 0.3 seconds, which a slow trigger pull or a
+// low frame rate overruns. React 360 had no limit.
+export const CLICK_MS = 1500;
+
 export const settings = {
   // Where asset() looks, set from the ReactInstance's `assetRoot` option
   assetRoot: 'static_assets/',

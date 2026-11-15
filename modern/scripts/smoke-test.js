@@ -170,7 +170,8 @@ async function run(page, step) {
     });
     await sleep(800);
     await page.evaluate(() => window.xrDevice.controllers.right.updateButtonValue('trigger', 1));
-    await sleep(120);
+    // Held for a few frames, even where frames are slow
+    await sleep(900);
     await page.evaluate(() => window.xrDevice.controllers.right.updateButtonValue('trigger', 0));
     await until(name => {
       const texture = window.r360.scene.background;
