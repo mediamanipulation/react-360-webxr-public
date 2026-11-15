@@ -17,6 +17,7 @@ controllers, tracked hands or gaze.
 | [`Libraries/`](Libraries) | The React components (`react-360`), moved from React 16.3 and React Native 0.55 to React 16.8 and React Native 0.59, so components can use hooks. |
 | [`webxr-demo/`](webxr-demo/README.md) | A runnable app on both, with the fixes its 2019 toolchain needs on current Node. It also holds the runtime's tests. Start here. |
 | [`examples/`](examples/README.md) | Four showcase demos: a solar system, a controller sandbox, a sound visualizer and a city built from React 360's own source code. |
+| [`Samples/`](Samples) | Facebook's original sample apps, as source: app templates for tours and media, and samples for native modules, multiple roots, custom video players and head-locked surfaces. They are not set up to run by themselves. `webxr-demo/` is the `BasicAppTemplate` sample made runnable on the port, and the others can be brought across the same way (see "Start your own app" below). |
 | [`docs/`](docs) | The original React 360 documentation. The API it describes is unchanged, apart from what the runtime's README lists. |
 | [`WEBXR_STATUS.md`](WEBXR_STATUS.md) | What the port covers, what has been checked and how, and what is still open. |
 
