@@ -1,5 +1,7 @@
 # `/packages` Directory
 
+> **Not part of the WebXR port.** These packages are the unreleased next-generation runtime the React 360 team was working on when the project was archived. They still use WebVR (`VRDisplay`), which browsers have removed, so `react-360`, `vr-state` and `vr-input-source` here cannot enter VR. Nothing in [`React360/`](../React360/README.md), [`Libraries/`](../Libraries) or the demos depends on them. They are kept as the project left them.
+
 React 360 is composed of a series of packages that are layered to create an immersive 360 environment. Each package is designed to provide a single function, so that developers can pick and choose the pieces they need.
 
 This directory is a Lerna monorepo, which makes it easy to manage many packages with a single script.

@@ -1,6 +1,23 @@
-# WebXR port: gap analysis
+# WebXR port: status
 
 Status as of 2026-11-14, against `facebookarchive/react-360` master (archived Dec 2020).
+
+This began as a gap analysis of the port. The gaps it found are listed below as they were written, each marked with what has happened since.
+
+| Gap | State |
+| --- | --- |
+| 1. Hand tracking never turns on | **Closed.** The session requests `hand-tracking` and `local-floor` as optional features. |
+| 2. `ControllerInfo` doesn't see XR controllers | **Closed.** It follows the session's input sources. |
+| 3. No thumbstick / axis events | **Closed.** Gamepad axes are sent as `axis` input events. |
+| 4. Reference-space `reset` not handled | **Closed in code.** Reported as a `recenter` event. What content does on a real recenter still needs a headset check. |
+| 5. The other `packages/` are still WebVR | **Decided.** Kept, and marked as unported in their README. |
+| 6. Nothing installable yet | **Open.** The README now describes building from a checkout. Publishing to npm is still to do. |
+| 7. Test coverage | **Closed.** Unit tests for `VRState`, `ControllerRaycaster`, `ControllerInfo` and axis events, and an emulator smoke test (`npm test` and `npm run smoke` in `webxr-demo`). `Compositor.renderXR` is covered only by the smoke test. |
+| 8. Smaller items | **Partly.** `fixedFoveation` and `framebufferScaleFactor` are options. Haptics, Vision Pro and the AudioContext note are unchanged. |
+
+Still unverified on a physical headset: the two layer options (the emulator ignores them), content after a real recenter, stereo panorama alignment, and audio panning.
+
+Details of each are in [`React360/README.md`](React360/README.md).
 
 ## Summary
 
@@ -10,7 +27,7 @@ This analysis comes from a diff against upstream, a read of the remaining runtim
 
 - `npm ci` and `npm run bundle` succeed on **Node 22.23**, so the toolchain patches hold.
 - In **headless Chrome with IWER** (`?emulate`, emulated Quest 3), the "View in VR" button appears and `enterVR` starts an `immersive-vr` session with 2 input sources. Both eyes render, including the stereo layout, the right-controller beam and the cursor. `exitVR` ends the session, restores the window render loop and resets the button to "View in VR".
-- I have **not** run it on a physical headset. Every item marked *headset* below needs that.
+- At the time of writing it had **not** been run on a physical headset. Every item marked *headset* below needed that.
 
 ## What the port covers
 
@@ -29,7 +46,7 @@ This analysis comes from a diff against upstream, a read of the remaining runtim
 | Spatial audio | Listener follows camera | Unchanged; still follows the head pose |
 | Exit from desktop page | n/a | VR button switches to "Exit VR" while presenting |
 
-## Gaps
+## Gaps, as first written
 
 Ordered by how likely they are to bite someone running an existing React 360 app.
 
@@ -62,10 +79,10 @@ When the user recenters (holding the Meta button), the browser fires `reset` on 
 ### 6. Distribution: nothing installable yet — *biggest adoption gap*
 
 - The ported runtime isn't published. `react-360-web@1.1.0` on npm is still the WebVR build, and `react-360 init` scaffolds against it.
-- Using the port today means copying the `webxr-demo/rn-cli.config.js` approach, which resolves `react-360-web` from `../React360` because Metro 0.30 doesn't follow symlinks or `file:` dependencies.
+- Using the port today means copying the `webxr-demo/metro.config.js` approach, which resolves `react-360-web` from `../React360` because Metro 0.51 doesn't follow symlinks or `file:` dependencies.
 - The root README's "Getting Started" still describes the 2018 CLI and "Node.js 6.0.0 or higher".
 
-To make existing apps upgradeable with one change: publish `React360/` under a scoped name (e.g. `@mediamanipulation/react-360-web`), and either ship `patch-toolchain.js` as a standalone postinstall or document the steps.
+To make existing apps upgradeable with one change: publish `React360/` under a new scoped name, and either ship `patch-toolchain.js` as a standalone postinstall or document the steps.
 
 ### 7. Test coverage — *medium*
 
@@ -84,18 +101,16 @@ The only new tests are two `xrMappingLookup` cases. `VRState`, `Compositor.rende
 
 ## Modernization path (beyond the port)
 
-The port restores old apps but keeps React 16.3, React Native 0.55, Metro 0.30 and three.js r87. If the goal grows from "React 360 runs again" to "React 360 worth choosing for new work", the order is:
+The port restores old apps but keeps React 16.8, React Native 0.59, Metro 0.51 and three.js r87. If the goal grows from "React 360 runs again" to "React 360 worth choosing for new work", the order is:
 
 1. **three.js r87 → current.** Delete the `bindFramebuffer` redirect and `renderXR`, and use `renderer.xr.setSession()` / `renderer.xr.getCamera()`. This also brings current loaders and color management. Watch for: `Geometry` removal (r125) in OVRUI/UIView and the custom materials, `getInverse` → `invert`, and color-space and tone-mapping defaults.
-2. **Metro / React Native toolchain.** Replace the RN-0.55 bridge and worker bundling with a standard bundler (Vite or esbuild). This is the largest piece, because `Runtime/` and `Bridge/` assume the RN module system.
-3. **React 16.3 → 18/19.** Comes with step 2, since the RN renderer pins the React version.
+2. **Metro / React Native toolchain.** Replace the RN-0.59 bridge and worker bundling with a standard bundler (Vite or esbuild). This is the largest piece, because `Runtime/` and `Bridge/` assume the RN module system.
+3. **React 16.8 → 18/19.** Comes with step 2, since the RN renderer pins the React version.
 
 Steps 2 and 3 amount to a rewrite of the runtime layer. If that's the goal, compare it against building a React-360-style API (Surfaces, `asset()`, `VrButton`, `Environment`) on top of `@react-three/fiber` + `@react-three/xr`.
 
-## Suggested next steps for Claude Code (local, with headset)
+## Next steps
 
-1. Add `optionalFeatures` (gap 1) and verify hands on Quest.
-2. Port `ControllerInfo` to `inputSources` (gap 2).
-3. Add the IWER smoke test and the `VRState` unit tests (gap 7).
-4. On-headset pass: recenter, system-menu exit, hand pinch, stereo pano alignment, audio panning.
-5. Decide on `packages/` (gap 5), then publish the runtime and update the README (gap 6).
+1. On-headset pass: recenter, the layer options, stereo panorama alignment, audio panning.
+2. Publish the runtime and components to npm under a new name, with the toolchain patches as a standalone postinstall, so apps can upgrade without a checkout (gap 6).
+3. Haptics, and a check in the visionOS simulator (gap 8).
