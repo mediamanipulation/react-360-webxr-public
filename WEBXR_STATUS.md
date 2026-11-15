@@ -101,6 +101,8 @@ The only new tests are two `xrMappingLookup` cases. `VRState`, `Compositor.rende
 
 ## Modernization path (beyond the port)
 
+> The last option below has since been started: [`modern/`](modern/README.md) is a React-360-style API on `@react-three/fiber` and `@react-three/xr`, beside the port.
+
 The port restores old apps but keeps React 16.8, React Native 0.59, Metro 0.51 and three.js r87. If the goal grows from "React 360 runs again" to "React 360 worth choosing for new work", the order is:
 
 1. **three.js r87 → current.** Delete the `bindFramebuffer` redirect and `renderXR`, and use `renderer.xr.setSession()` / `renderer.xr.getCamera()`. This also brings current loaders and color management. Watch for: `Geometry` removal (r125) in OVRUI/UIView and the custom materials, `getInverse` → `invert`, and color-space and tone-mapping defaults.

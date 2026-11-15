@@ -9,6 +9,7 @@
   <a href="#try-it-in-two-minutes">Try it</a> ·
   <a href="#the-examples">Examples</a> ·
   <a href="#what-changed-from-the-archive">What changed</a> ·
+  <a href="#a-modern-runtime-too">Modern runtime</a> ·
   <a href="#start-your-own-app">Start your own app</a> ·
   <a href="WEBXR_STATUS.md">Status</a>
 </p>
@@ -136,6 +137,35 @@ describes, so most existing apps need no code changes. Apps whose `client.js`
 reached into the VR internals do; the "WebXR" section of
 [`React360/README.md`](React360/README.md) lists what moved.
 
+## A modern runtime, too
+
+The port keeps the 2019 stack so that old apps run unchanged. For new work,
+[`modern/`](modern/README.md) is a second runtime with the same API on
+today's tools:
+
+| | The port (`React360/`) | The modern runtime (`modern/`) |
+| --- | --- | --- |
+| React | 16.8, through React Native 0.59 | 19 |
+| three.js | r87 (2017) | r187 |
+| Bundler | Metro | Vite |
+| Rendering | Its own renderer in a web worker | [react-three-fiber](https://github.com/pmndrs/react-three-fiber), [uikit](https://github.com/pmndrs/uikit) and [@react-three/xr](https://github.com/pmndrs/xr) |
+
+Apps still import `View`, `Text`, `VrButton`, `Environment` and the rest
+from `react-360`. It runs the demo and all four examples, three of them needing only a new
+setup file, and it accepts custom views and native modules written
+for the original runtime.
+
+```bash
+cd modern
+npm install
+npm start
+```
+
+Then open http://localhost:8083/index.html, or add `?emulate` for the virtual
+headset. It is newer and less proven than the port: it has been checked on the
+page and in the emulator, not yet on a headset. Its
+[README](modern/README.md) lists what it covers and what is still missing.
+
 ## What's in the repository
 
 | Folder | What it is |
@@ -144,6 +174,7 @@ reached into the VR internals do; the "WebXR" section of
 | [`Libraries/`](Libraries) | The React components (`react-360`), updated to React 16.8 and React Native 0.59. |
 | [`webxr-demo/`](webxr-demo/README.md) | A runnable app on both, with the fixes its 2019 toolchain needs on current Node. It also holds the runtime's tests. Start here. |
 | [`examples/`](examples/README.md) | The four demos above. |
+| [`modern/`](modern/README.md) | The modern runtime: the same API on React 19, current three.js and Vite, with its own tests. It loads the demo's assets and the examples from the folders above. |
 | [`Samples/`](Samples) | Facebook's original sample apps, as source: templates for tours and media, and samples for native modules, multiple roots, custom video players and head-locked surfaces. They are not set up to run by themselves; `webxr-demo/` is the `BasicAppTemplate` sample made runnable, and the others can be brought across the same way. |
 | [`docs/`](docs) | The original React 360 documentation. |
 | [`WEBXR_STATUS.md`](WEBXR_STATUS.md) | What the port covers, what has been checked and how, and what is still open. |
@@ -183,14 +214,17 @@ clicks "View in VR", pulls a trigger, pushes a thumbstick, swaps the
 controllers for hands, pinches, and leaves again, checking what the runtime
 makes of each step.
 
+The modern runtime has its own: `npm test` and `npm run smoke` in `modern/`.
+
 ## Status
 
-This is a restoration, not a rewrite. three.js stays at r87 and the bundler is
+The port is a restoration, not a rewrite. three.js stays at r87 and the bundler is
 still Metro from the React Native 0.59 era, so that existing apps keep working
 unchanged. The port is developed against the emulator, with checks on a Meta
 Quest. [`WEBXR_STATUS.md`](WEBXR_STATUS.md) lists what has only been checked in
-the emulator, what is still open (publishing to npm is the big one), and what
-a real modernization would take.
+the emulator, and what is still open (publishing to npm is the big one). The
+rewrite on a current stack is under way beside it, in
+[`modern/`](modern/README.md).
 
 Issues and pull requests are welcome. If you report a bug, include the
 browser, the headset and what you saw.
