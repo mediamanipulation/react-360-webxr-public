@@ -312,8 +312,13 @@ export default class Compositor {
       camera.projectionMatrix.fromArray(view.projectionMatrix);
 
       this.prepareForRender(view.eye === 'none' ? null : view.eye);
-      this._renderer.setViewport(viewport.x, viewport.y, viewport.width, viewport.height);
-      this._renderer.setScissor(viewport.x, viewport.y, viewport.width, viewport.height);
+      // three.js r87 measures a viewport's y from the top of the canvas, and
+      // turns it into GL's bottom-up y using the canvas height. The XR
+      // framebuffer is rarely the canvas's height, so undo that here: the
+      // renderer then arrives back at the y the layer asked for.
+      const y = size.height - viewport.y - viewport.height;
+      this._renderer.setViewport(viewport.x, y, viewport.width, viewport.height);
+      this._renderer.setScissor(viewport.x, y, viewport.width, viewport.height);
       this._renderer.render(this._scene, camera);
     }
 
