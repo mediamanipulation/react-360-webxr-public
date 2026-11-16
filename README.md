@@ -1,8 +1,18 @@
-<h1 align="center">React 360, back in VR</h1>
+<p align="center">
+  <img src="examples/screenshots/banner.svg" alt="React 360, back in VR" width="100%">
+</p>
 
 <p align="center">
   <b>Facebook's React 360, ported from WebVR to WebXR.</b><br>
   Build 360 and VR experiences with React, and step into them on today's headsets.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/WebXR-ready-6ee7ff?style=flat-square&labelColor=0c0f33" alt="WebXR ready">
+  <img src="https://img.shields.io/badge/input-controllers%20%C2%B7%20hands%20%C2%B7%20gaze-6ee7ff?style=flat-square&labelColor=0c0f33" alt="Input: controllers, hands and gaze">
+  <img src="https://img.shields.io/badge/React-16.8%20and%2019-6ee7ff?style=flat-square&labelColor=0c0f33" alt="React 16.8 and 19">
+  <img src="https://img.shields.io/badge/headset-optional-6ee7ff?style=flat-square&labelColor=0c0f33" alt="Headset optional">
+  <img src="https://img.shields.io/badge/license-BSD-6ee7ff?style=flat-square&labelColor=0c0f33" alt="BSD license">
 </p>
 
 <p align="center">
@@ -15,8 +25,25 @@
 </p>
 
 <p align="center">
-  <a href="examples/solar-system"><img src="examples/screenshots/solar-system.png" alt="The solar system example: the Sun and planets on their orbits, with a panel of facts about Earth" width="820"></a>
+  <a href="examples/solar-system"><img src="examples/screenshots/solar-system.webp" alt="The solar system example in motion: planets circling the Sun, with a panel of facts about Earth" width="820"></a>
 </p>
+
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h3>It enters VR again</h3>
+      Browsers removed WebVR, and every React 360 app lost its "View in VR" button. This fork gives it back, on WebXR.
+    </td>
+    <td width="33%" valign="top">
+      <h3>Point, pinch or look</h3>
+      Controllers, tracked hands and gaze all arrive as the same <code>onClick</code>. Thumbsticks report too.
+    </td>
+    <td width="33%" valign="top">
+      <h3>No headset needed</h3>
+      Add <code>?emulate</code> to the address and a virtual Quest 3 runs a real VR session in your desktop browser.
+    </td>
+  </tr>
+</table>
 
 ## Why this exists
 
@@ -79,24 +106,24 @@ downloaded art: the geometry, textures and music are all generated in code.
 <table>
   <tr>
     <td width="50%">
-      <a href="examples/solar-system"><img src="examples/screenshots/solar-system.png" alt="Solar system example"></a><br>
+      <a href="examples/solar-system"><img src="examples/screenshots/solar-system.webp" alt="Solar system example"></a><br>
       <b><a href="examples/solar-system">Solar system</a></b><br>
       Point at a planet to read about it, and change the speed of time.
     </td>
     <td width="50%">
-      <a href="examples/code-city"><img src="examples/screenshots/code-city.png" alt="Code city example"></a><br>
+      <a href="examples/code-city"><img src="examples/screenshots/code-city.webp" alt="Code city example"></a><br>
       <b><a href="examples/code-city">Code city</a></b><br>
       React 360's own source as a city: one building per file, as tall as the file is long.
     </td>
   </tr>
   <tr>
     <td width="50%">
-      <a href="examples/controller-sandbox"><img src="examples/screenshots/controller-sandbox.png" alt="Controller sandbox example"></a><br>
+      <a href="examples/controller-sandbox"><img src="examples/screenshots/controller-sandbox.webp" alt="Controller sandbox example"></a><br>
       <b><a href="examples/controller-sandbox">Controller sandbox</a></b><br>
       Pull the trigger to launch glowing shapes that float and bounce.
     </td>
     <td width="50%">
-      <a href="examples/sound-visualizer"><img src="examples/screenshots/sound-visualizer.png" alt="Sound visualizer example"></a><br>
+      <a href="examples/sound-visualizer"><img src="examples/screenshots/sound-visualizer.webp" alt="Sound visualizer example"></a><br>
       <b><a href="examples/sound-visualizer">Sound visualizer</a></b><br>
       Music generated live in the browser. Turn your head and hear it move.
     </td>
